@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RobloxUI Kit</title>
+    <style>
+        :root {
+            --bg: #1e1e24;
+            --surface: rgba(43, 43, 54, 0.7);
+            --surface-hover: rgba(56, 56, 70, 0.9);
+            --primary: #00b0f0;
+            --primary-hover: #0090c0;
+            --text: #e0e0e0;
+            --text-secondary: #aaaaaa;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        h2 {
+            font-size: 15px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .section {
+            background: var(--surface);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+
+        button {
+            background: var(--surface-hover);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+
+        button:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        button.primary {
+            background: var(--primary);
+            border: none;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        button.primary:hover {
+            background: var(--primary-hover);
+        }
+
+        input,
+        select {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 12px;
+        }
+
+        input[type="color"] {
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: 1px solid var(--primary);
+        }
+
+        .anchor-grid {
+            width: 90px;
+            margin: 0 auto;
+        }
+
+        .anchor-grid button {
+            padding: 8px 0;
+            border-radius: 4px;
+        }
+
+        .anchor-grid button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .icon {
+            margin-right: 6px;
+        }
+
+        .status {
+            font-size: 11px;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        #sec-selected {
+            opacity: 0.5;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+
+        #sec-selected.active {
+            opacity: 1;
+            pointer-events: auto;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="section" id="sec-canvas">
+        <h2><span class="icon">🎮</span> Canvas</h2>
+        <div class="grid-2" style="margin-bottom: 8px;">
+            <button onclick="createCanvas(1920, 1080)">1920×1080</button>
+            <button onclick="createCanvas(2560, 1440)">2560×1440</button>
+            <button onclick="createCanvas(1366, 768)">1366×768</button>
+            <button onclick="createCanvas(390, 844)">Mobile 9:16</button>
+        </div>
+        <div class="row">
+            <input type="number" id="canv-w" placeholder="W" value="1920">
+            <input type="number" id="canv-h" placeholder="H" value="1080">
+        </div>
+        <button class="primary" style="width: 100%" onclick="createCustomCanvas()">Create Canvas</button>
+        <div class="row" style="margin-top: 8px;">
+            <label style="display:flex; align-items:center; gap: 4px; margin:0;"><input type="checkbox"
+                    id="safezone-toggle" onchange="toggleSafeZone()"> Safe Zone Guide (72px)</label>
+        </div>
+        <div id="canvas-status" class="status"></div>
+    </div>
+
+    <div class="section" id="sec-add">
+        <h2><span class="icon">➕</span> Add Frame</h2>
+        <div class="row">
+            <input type="number" id="frame-w" placeholder="Width" value="400">
+            <input type="number" id="frame-h" placeholder="Height" value="300">
+            <select id="size-mode" style="width: 60px;">
+                <option value="px">px</option>
+                <option value="%">%</option>
+            </select>
+        </div>
+        <div class="row">
+            <select id="frame-type" style="flex:1;">
+                <option value="Panel">Panel</option>
+                <option value="Header">Header</option>
+                <option value="Modal">Modal</option>
+                <option value="Button">Button</option>
+                <option value="Container">Container</option>
+            </select>
+            <div style="display:flex; align-items:center; gap: 4px;" title="Background Color">
+                <input type="color" id="frame-fill" value="#333333">
+            </div>
+            <input type="number" id="frame-radius" placeholder="Radius" value="8" style="width: 55px;"
+                title="Corner Radius">
+        </div>
+        <div class="row">
+            <div style="display:flex; align-items:center; gap: 4px;" title="Stroke Color & Size">
+                <label style="margin:0; width:45px">Stroke</label>
+                <input type="color" id="frame-stroke" value="#ffffff">
+                <input type="number" id="frame-stroke-weight" placeholder="0 = None" value="0" style="width: 60px;">
+            </div>
+        </div>
+        <div class="row" style="margin-top: 12px">
+            <div style="flex:1; text-align:center;">
+                <label>Anchor Position</label>
+                <div class="grid-3 anchor-grid" id="new-anchor-grid">
+                    <button data-ax="left" data-ay="top">↖</button>
+                    <button data-ax="center" data-ay="top">↑</button>
+                    <button data-ax="right" data-ay="top">↗</button>
+                    <button data-ax="left" data-ay="center">←</button>
+                    <button data-ax="center" data-ay="center" class="active">·</button>
+                    <button data-ax="right" data-ay="center">→</button>
+                    <button data-ax="left" data-ay="bottom">↙</button>
+                    <button data-ax="center" data-ay="bottom">↓</button>
+                    <button data-ax="right" data-ay="bottom">↘</button>
+                </div>
+            </div>
+        </div>
+        <button class="primary" style="width: 100%; margin-top:12px;" onclick="spawnFrame()">Create Frame</button>
+    </div>
+
+    <div class="section" id="sec-add-text">
+        <h2><span class="icon">📝</span> Add Text</h2>
+        <div class="row">
+            <select id="text-type" style="width: 100px;">
+                <option value="TextLabel">Label</option>
+                <option value="TextButton">Button</option>
+            </select>
+            <input type="text" id="text-content" placeholder="Text Content" value="TextLabel" style="flex:1;">
+        </div>
+        <div class="row">
+            <input type="number" id="text-size" placeholder="Font Size" value="24" style="width: 80px;"
+                title="Font Size">
+            <div style="display:flex; align-items:center; gap: 4px; flex:1;" title="Text Color">
+                <label style="margin:0; width: 40px; text-align:right;">Color</label>
+                <input type="color" id="text-color" value="#ffffff">
+            </div>
+            <button onclick="spawnText()" style="width: 80px;">Create</button>
+        </div>
+    </div>
+
+    <div class="section" id="sec-selected">
+        <h2><span class="icon">🎯</span> Selected Frame</h2>
+        <div class="row">
+            <input type="number" id="sel-w" placeholder="W" title="Width">
+            <input type="number" id="sel-h" placeholder="H" title="Height">
+            <select id="sel-mode" style="width: 60px;">
+                <option value="px">px</option>
+                <option value="%">%</option>
+            </select>
+        </div>
+        <div class="row">
+            <div style="display:flex; align-items:center; gap: 4px;" title="Background Color">
+                <label style="margin:0; width: 40px;">Fill</label>
+                <input type="color" id="sel-fill" value="#333333">
+            </div>
+            <div style="display:flex; align-items:center; gap: 4px; flex:1;" title="Corner Radius">
+                <label style="margin:0; width: 40px; text-align:right;">Radius</label>
+                <input type="number" id="sel-radius" placeholder="Radius">
+            </div>
+        </div>
+        <div class="row">
+            <div style="display:flex; align-items:center; gap: 4px;" title="Stroke Color & Size">
+                <label style="margin:0; width:40px">Stroke</label>
+                <input type="color" id="sel-stroke" value="#ffffff">
+                <input type="number" id="sel-stroke-weight" placeholder="Thickness (0=none)" value="0">
+            </div>
+        </div>
+        <button style="width: 100%; margin-top: 4px;" onclick="applySelectedSize()">Apply Style & Size</button>
+
+        <div class="row" style="margin-top: 12px; text-align:center;">
+            <div style="flex:1;">
+                <label>Re-Anchor</label>
+                <div class="grid-3 anchor-grid" id="sel-anchor-grid" style="transform: scale(0.85)">
+                    <button data-ax="left" data-ay="top">↖</button>
+                    <button data-ax="center" data-ay="top">↑</button>
+                    <button data-ax="right" data-ay="top">↗</button>
+                    <button data-ax="left" data-ay="center">←</button>
+                    <button data-ax="center" data-ay="center">·</button>
+                    <button data-ax="right" data-ay="center">→</button>
+                    <button data-ax="left" data-ay="bottom">↙</button>
+                    <button data-ax="center" data-ay="bottom">↓</button>
+                    <button data-ax="right" data-ay="bottom">↘</button>
+                </div>
+            </div>
+            <div class="flex:1; display:flex; flex-direction:column; gap:8px;">
+                <div>
+                    <label>Nudge (1px)</label>
+                    <div class="grid-3" style="width: 70px; margin:0 auto; gap:2px;">
+                        <div></div>
+                        <button onclick="nudge(0, -1)">↑</button>
+                        <div></div>
+                        <button onclick="nudge(-1, 0)">←</button>
+                        <button onclick="nudge(0, 1)">↓</button>
+                        <button onclick="nudge(1, 0)">→</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap: 4px; justify-content:center;">
+                    <button onclick="centerSel('H')">Center H</button>
+                    <button onclick="centerSel('V')">Center V</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
+            <div style="flex:1">
+                <label>Quick Actions</label>
+                <div class="grid-2">
+                    <button onclick="triggerQuickAction('fill')" title="Sets width/height to 100% of parent">Fill
+                        Parent</button>
+                    <button onclick="triggerQuickAction('aspectratio')" title="Adds a UIAspectRatio tag">Aspect
+                        Ratio</button>
+                    <button onclick="triggerQuickAction('listlayout')" title="Toggles AutoLayout/UIListLayout">Toggle
+                        Layout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAx = 'center';
+        let currentAy = 'center';
+
+        // Setup anchor grids
+        document.querySelectorAll('#new-anchor-grid button').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('#new-anchor-grid button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                currentAx = b.getAttribute('data-ax');
+                currentAy = b.getAttribute('data-ay');
+            };
+        });
+
+        document.querySelectorAll('#sel-anchor-grid button').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('#sel-anchor-grid button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                let ax = b.getAttribute('data-ax');
+                let ay = b.getAttribute('data-ay');
+                parent.postMessage({
+                    pluginMessage: {
+                        type: 'update-selected',
+                        w: parseFloat(document.getElementById('sel-w').value),
+                        h: parseFloat(document.getElementById('sel-h').value),
+                        mode: document.getElementById('sel-mode').value,
+                        radius: parseFloat(document.getElementById('sel-radius').value),
+                        fillHex: document.getElementById('sel-fill').value,
+                        strokeColor: document.getElementById('sel-stroke').value,
+                        strokeWeight: parseFloat(document.getElementById('sel-stroke-weight').value || "0"),
+                        ax, ay
+                    }
+                }, '*');
+            };
+        });
+
+        function createCanvas(w, h) {
+            document.getElementById('canv-w').value = w;
+            document.getElementById('canv-h').value = h;
+            createCustomCanvas();
+        }
+
+        function createCustomCanvas() {
+            let w = parseInt(document.getElementById('canv-w').value);
+            let h = parseInt(document.getElementById('canv-h').value);
+            parent.postMessage({ pluginMessage: { type: 'create-canvas', w, h } }, '*');
+        }
+
+        function spawnFrame() {
+            let w = parseFloat(document.getElementById('frame-w').value);
+            let h = parseFloat(document.getElementById('frame-h').value);
+            let mode = document.getElementById('size-mode').value;
+            let fType = document.getElementById('frame-type').value;
+            let radius = parseFloat(document.getElementById('frame-radius').value || "0");
+            let fillHex = document.getElementById('frame-fill').value;
+            let strokeColor = document.getElementById('frame-stroke').value;
+            let strokeWeight = parseFloat(document.getElementById('frame-stroke-weight').value || "0");
+
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'spawn-frame', w, h, mode, fType, radius, fillHex, strokeColor, strokeWeight, ax: currentAx, ay: currentAy
+                }
+            }, '*');
+        }
+
+        function triggerQuickAction(action) {
+            parent.postMessage({ pluginMessage: { type: 'quick-action', action } }, '*');
+        }
+
+        function spawnText() {
+            let tType = document.getElementById('text-type').value;
+            let textContent = document.getElementById('text-content').value;
+            let textSize = parseFloat(document.getElementById('text-size').value || "24");
+            let textColorHex = document.getElementById('text-color').value;
+
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'spawn-text',
+                    tType, textContent, textSize, textColorHex,
+                    w: parseFloat(document.getElementById('frame-w').value || "200"),
+                    h: parseFloat(document.getElementById('frame-h').value || "50"),
+                    mode: document.getElementById('size-mode').value,
+                    ax: currentAx, ay: currentAy
+                }
+            }, '*');
+        }
+
+        function applySelectedSize() {
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'update-selected',
+                    w: parseFloat(document.getElementById('sel-w').value),
+                    h: parseFloat(document.getElementById('sel-h').value),
+                    mode: document.getElementById('sel-mode').value,
+                    radius: parseFloat(document.getElementById('sel-radius').value),
+                    fillHex: document.getElementById('sel-fill').value,
+                    strokeColor: document.getElementById('sel-stroke').value,
+                    strokeWeight: parseFloat(document.getElementById('sel-stroke-weight').value || "0")
+                }
+            }, '*');
+        }
+
+        function nudge(dx, dy) {
+            parent.postMessage({ pluginMessage: { type: 'nudge-selected', dx, dy } }, '*');
+        }
+
+        function centerSel(dir) {
+            parent.postMessage({ pluginMessage: { type: 'center-selected', dir } }, '*');
+        }
+
+        function toggleSafeZone() {
+            parent.postMessage({ pluginMessage: { type: 'toggle-safezone', enabled: document.getElementById('safezone-toggle').checked } }, '*');
+        }
+
+        // Messages from plugin
+        window.onmessage = (event) => {
+            const msg = event.data.pluginMessage;
+            if (msg.type === 'stateUpdate') {
+                if (msg.state.canvasId) {
+                    document.getElementById('canvas-status').innerText = `Active Canvas: ${msg.state.canvasW}x${msg.state.canvasH}`;
+                } else {
+                    document.getElementById('canvas-status').innerText = 'No Active Canvas';
+                }
+            } else if (msg.type === 'selectionUpdate') {
+                const sec = document.getElementById('sec-selected');
+                if (msg.active) {
+                    sec.classList.add('active');
+                    document.getElementById('sel-w').value = msg.w;
+                    document.getElementById('sel-h').value = msg.h;
+                    document.getElementById('sel-mode').value = msg.mode;
+                    document.getElementById('sel-radius').value = msg.radius;
+                    document.getElementById('sel-fill').value = msg.fillHex;
+                    document.getElementById('sel-stroke').value = msg.strokeColor;
+                    document.getElementById('sel-stroke-weight').value = msg.strokeWeight;
+
+                    document.querySelectorAll('#sel-anchor-grid button').forEach(b => {
+                        if (msg.ax == b.getAttribute('data-ax') && msg.ay == b.getAttribute('data-ay')) {
+                            b.classList.add('active');
+                        } else {
+                            b.classList.remove('active');
+                        }
+                    });
+                } else {
+                    sec.classList.remove('active');
+                }
+            }
+        };
+    </script>
+</body>
+
+</html>

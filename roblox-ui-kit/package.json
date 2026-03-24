@@ -1,0 +1,13 @@
+{
+    "name": "roblox-ui-kit",
+    "version": "1.0.0",
+    "description": "Figma plugin for scaffolding Roblox UI.",
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "watch": "tsc -p tsconfig.json --watch"
+    },
+    "devDependencies": {
+        "@figma/plugin-typings": "^1.106.0",
+        "typescript": "^5.0.0"
+    }
+}

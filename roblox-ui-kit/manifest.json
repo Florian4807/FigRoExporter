@@ -1,0 +1,15 @@
+{
+    "name": "RobloxUI Kit",
+    "id": "local-roblox-ui-kit",
+    "api": "1.0.0",
+    "main": "src/code.js",
+    "ui": "src/ui.html",
+    "editorType": [
+        "figma"
+    ],
+    "networkAccess": {
+        "allowedDomains": [
+            "none"
+        ]
+    }
+}

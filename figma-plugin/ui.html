@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #222222;
+            --text-color: #ffffff;
+            --border-color: #333333;
+            --accent-color: #5555aa;
+            --accent-hover: #6666cc;
+            --accent-text: #ffffff;
+            --secondary-bg: #2a2a2a;
+            --icon-color: #aaaaaa;
+            --success-color: #00b050;
+            --danger-color: #cc4444;
+            --tag-bg: #333333;
+            --tag-hover: #444444;
+            --tag-selected: #5555aa;
+        }
+
+        body {
+            font-family: Inter, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 12px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100vh;
+            box-sizing: border-box;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            color: #888;
+            border: none;
+            padding: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 14px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--text-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .selected-count {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .selected-count span {
+            color: var(--accent-color);
+        }
+
+        .toggle-group {
+            display: flex;
+            background-color: #111;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-btn {
+            background: transparent;
+            color: #888;
+            border: none;
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .toggle-btn.active {
+            background-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .btn-full {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+
+        .btn-full:hover {
+            background-color: #333;
+        }
+
+        .info-text {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-half {
+            flex: 1;
+            background-color: transparent;
+            color: var(--danger-color);
+            border: 1px solid rgba(204, 68, 68, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-half:hover {
+            background-color: rgba(204, 68, 68, 0.1);
+        }
+
+        .tags-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .json-wrapper {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-color);
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background-color: #444;
+            color: white;
+        }
+
+        .copy-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        textarea {
+            width: 100%;
+            height: calc(100vh - 180px);
+            min-height: 100px;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 12px;
+            padding-right: 40px;
+            /* Space for copy btn */
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .tag-pill {
+            background-color: var(--tag-bg);
+            border: 1px solid var(--border-color);
+            color: #ccc;
+            padding: 6px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            user-select: none;
+        }
+
+        .tag-pill:hover {
+            background-color: var(--tag-hover);
+            color: #fff;
+        }
+
+        .tag-pill.selected {
+            background-color: var(--tag-selected);
+            border-color: var(--accent-hover);
+            color: #fff;
+        }
+
+        .selected-tags-box {
+            background-color: #111;
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            min-height: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .empty-tags {
+            color: #666;
+            font-style: italic;
+        }
+
+        .apply-btn {
+            flex: 2;
+            background-color: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .apply-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .clear-btn {
+            flex: 1;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .clear-btn:hover {
+            background-color: var(--secondary-bg);
+        }
+
+        .export-header {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            height: 36px;
+        }
+
+        .valid-count-btn {
+            flex: 1;
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: default;
+        }
+
+        .valid-count-btn.invalid {
+            background-color: var(--danger-color);
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            background-color: var(--success-color);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: filter 0.2s;
+        }
+
+        .icon-btn:hover {
+            filter: brightness(1.2);
+        }
+
+        .icon-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        textarea {
+            flex-grow: 1;
+            resize: none;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 12px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            white-space: pre-wrap;
+            outline: none;
+            overflow-y: auto;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        input {
+            background-color: #111;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 12px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+        }
+
+        details {
+            background-color: var(--panel-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        summary {
+            padding: 10px 12px;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+            outline: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .settings-content {
+            padding: 0 12px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tabs">
+        <button class="tab-btn active" id="tabTagger">Tagger</button>
+        <button class="tab-btn" id="tabExporter">Exporter</button>
+    </div>
+
+    <!-- TAGGER TAB -->
+    <div class="tab-content active" id="contentTagger">
+        <div class="panel">
+            <div class="header-row">
+                <div class="selected-count">Selected · <span id="taggerSelectedCount">0</span></div>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="targetSelection"
+                        title="Apply tags only to the selected layer">Selection</button>
+                    <button class="toggle-btn" id="targetDescendants"
+                        title="Apply tags to the selected layer AND all nested child layers">+ Descendants</button>
+                </div>
+            </div>
+
+            <button class="btn-full" id="expandBtn" title="Expand the selected layer in Figma">Expand</button>
+            <div class="info-text">Select a layer/group/frame to begin.</div>
+
+            <div class="row">
+                <button class="btn-half" id="resetSelectedBtn" title="Remove all tags from the selected layer">Reset
+                    selected</button>
+                <button class="btn-half" id="resetChildrenBtn"
+                    title="Remove all tags from all nested child layers">Reset children</button>
+            </div>
+            <div class="info-text">Options above reset the tags on selected layers.</div>
+        </div>
+
+        <div class="panel">
+            <div style="font-weight:600; font-size: 13px; margin-bottom: -4px;">Tags</div>
+            <div class="info-text">Click tags to stack them, then apply.</div>
+
+            <div class="tags-grid" id="tagsGrid">
+                <div class="tag-pill" data-tag="#" title="Hash prefix (General tagging)">#</div>
+                <div class="tag-pill" data-tag="_image" title="Force this layer to be exported as a flat ImageLayer">
+                    _image</div>
+                <div class="tag-pill" data-tag="_button"
+                    title="Convert this layered Frame/Image to a GuiButton/TextButton">_button</div>
+                <div class="tag-pill" data-tag="_scroll" title="Convert this Frame to a ScrollingFrame">_scroll</div>
+                <div class="tag-pill" data-tag="_lock"
+                    title="Lock the proportions or specific constraints on this element">_lock</div>
+                <div class="tag-pill" data-tag="_ignore" title="Skip exporting this layer to Roblox entirely">_ignore
+                </div>
+                <div class="tag-pill" data-tag="_hover" title="Interactive State: Hover">_hover</div>
+                <div class="tag-pill" data-tag="_clicked" title="Interactive State: Clicked/Pressed">_clicked</div>
+                <div class="tag-pill" data-tag="_toggled" title="Interactive State: Active/Toggled">_toggled</div>
+                <div class="tag-pill" data-tag="_disabled" title="Interactive State: Disabled">_disabled</div>
+                <div class="tag-pill" data-tag="_parent"
+                    title="Export this layer relative to its immediate parent bounds">_parent</div>
+                <div class="tag-pill" data-tag="_scrollx" title="Horizontal ScrollingFrame explicit tag">_scrollx</div>
+                <div class="tag-pill" data-tag="_abs"
+                    title="Use absolute positioning instead of relative UI alignments">_abs</div>
+                <div class="tag-pill" data-tag="_vpf" title="Export this frame as a ViewportFrame">_vpf</div>
+                <div class="tag-pill" data-tag="_canvas"
+                    title="Use a CanvasGroup for this frame instead of a normal Frame">_canvas</div>
+            </div>
+
+            <div style="font-size: 12px; margin-top: 8px;">Selected tags</div>
+            <div class="selected-tags-box" id="selectedTagsBox">
+                <span class="empty-tags">(no tags selected)</span>
+            </div>
+
+            <div class="row">
+                <button class="apply-btn" id="applyTagsBtn">Apply tags</button>
+                <button class="clear-btn" id="clearTagsBtn">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPORTER TAB -->
+    <div class="tab-content" id="contentExporter">
+        <div class="export-header">
+            <button class="valid-count-btn invalid" id="validCountBtn">0 Selected, 0 Valid</button>
+            <button class="icon-btn" id="uploadCloudBtn" title="Upload to Open Cloud"
+                style="background-color: #00A3A6;">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M19.35 10.04C18.67 6.59 15.64 4 12 4C9.11 4 6.6 5.64 5.35 8.04C2.34 8.36 0 10.91 0 14C0 17.31 2.69 20 6 20H19C21.76 20 24 17.76 24 15C24 12.36 21.95 10.22 19.35 10.04ZM14 13V17H10V13H7L12 8L17 13H14Z" />
+                </svg>
+            </button>
+            <button class="icon-btn" id="downloadZipBtn" title="Download ZIP">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 9H15V3H9V9H5L12 16L19 9zM5 18V20H19V18H5z" />
+                </svg>
+            </button>
+            <button class="icon-btn" id="settingsBtn" title="Settings" style="background-color: #444;">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="settingsPanel" class="panel" style="display: none; padding-top: 10px; padding-bottom: 2px;">
+            <div style="font-weight:600; font-size: 13px; margin-bottom: -4px;">Export Settings & API Keys</div>
+            <div class="input-group" style="padding-top: 6px;">
+                <label for="apiKey">Roblox Open Cloud API Key</label>
+                <input type="password" id="apiKey" placeholder="Enter your Assets API Key..." />
+            </div>
+            <div class="input-group">
+                <label for="userId">Roblox User ID</label>
+                <input type="text" id="userId" placeholder="e.g. 352298720" />
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 10px;">
+                <button class="btn-full" id="clearCacheBtn" style="flex: 1; padding: 6px; font-size: 11px;">Clear
+                    Cache</button>
+                <button class="btn-full" id="resetSettingsBtn" style="flex: 1; padding: 6px; font-size: 11px;">Reset
+                    All</button>
+            </div>
+        </div>
+
+        <div id="statusOutput"
+            style="font-family: monospace; font-size: 11px; padding: 8px; color: var(--success-color); background-color: var(--secondary-bg); border-radius: 6px; margin-bottom: 8px; white-space: pre-wrap; display: none;">
+        </div>
+
+        <div class="json-wrapper">
+            <textarea id="jsonOutput" readonly placeholder="Exported JSON will appear here..."></textarea>
+            <button class="copy-btn" id="copyJsonBtn" title="Copy to Clipboard">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        const tabTagger = document.getElementById('tabTagger');
+        const tabExporter = document.getElementById('tabExporter');
+        const contentTagger = document.getElementById('contentTagger');
+        const contentExporter = document.getElementById('contentExporter');
+
+        tabTagger.onclick = () => {
+            tabTagger.classList.add('active');
+            tabExporter.classList.remove('active');
+            contentTagger.classList.add('active');
+            contentExporter.classList.remove('active');
+        };
+
+        tabExporter.onclick = () => {
+            tabExporter.classList.add('active');
+            tabTagger.classList.remove('active');
+            contentExporter.classList.add('active');
+            contentTagger.classList.remove('active');
+        };
+
+        // UI State
+        let stagedTags = [];
+        let numSelected = 0;
+        let numValid = 0;
+        let applyToDescendants = false;
+
+        // Tagger State Management
+        const tagsGrid = document.getElementById('tagsGrid');
+        const selectedTagsBox = document.getElementById('selectedTagsBox');
+        const clearTagsBtn = document.getElementById('clearTagsBtn');
+        const applyTagsBtn = document.getElementById('applyTagsBtn');
+        const taggerSelectedCount = document.getElementById('taggerSelectedCount');
+        const targetSelectionBtn = document.getElementById('targetSelection');
+        const targetDescendantsBtn = document.getElementById('targetDescendants');
+
+        function updateStagedTagsUI() {
+            Array.from(tagsGrid.children).forEach(el => {
+                const tag = el.getAttribute('data-tag');
+                if (stagedTags.includes(tag)) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+
+            if (stagedTags.length === 0) {
+                selectedTagsBox.innerHTML = '<span class="empty-tags">(no tags selected)</span>';
+            } else {
+                selectedTagsBox.innerHTML = '';
+                stagedTags.forEach(tag => {
+                    const span = document.createElement('div');
+                    span.className = 'tag-pill selected';
+                    span.textContent = tag;
+                    span.onclick = () => {
+                        stagedTags = stagedTags.filter(t => t !== tag);
+                        updateStagedTagsUI();
+                    };
+                    selectedTagsBox.appendChild(span);
+                });
+            }
+        }
+
+        tagsGrid.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tag-pill')) {
+                const tag = e.target.getAttribute('data-tag');
+                if (stagedTags.includes(tag)) {
+                    stagedTags = stagedTags.filter(t => t !== tag);
+                } else {
+                    stagedTags.push(tag);
+                }
+                updateStagedTagsUI();
+            }
+        });
+
+        clearTagsBtn.onclick = () => {
+            stagedTags = [];
+            updateStagedTagsUI();
+        };
+
+        applyTagsBtn.onclick = () => {
+            if (stagedTags.length === 0) return;
+            parent.postMessage({ pluginMessage: { type: 'apply-tags', tags: stagedTags, applyToDescendants } }, '*');
+            stagedTags = [];
+            updateStagedTagsUI();
+        };
+
+        targetSelectionBtn.onclick = () => {
+            applyToDescendants = false;
+            targetSelectionBtn.classList.add('active');
+            targetDescendantsBtn.classList.remove('active');
+        };
+        targetDescendantsBtn.onclick = () => {
+            applyToDescendants = true;
+            targetDescendantsBtn.classList.add('active');
+            targetSelectionBtn.classList.remove('active');
+        };
+
+        document.getElementById('resetSelectedBtn').onclick = () => {
+            parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'selection' } }, '*');
+        };
+
+        document.getElementById('resetChildrenBtn').onclick = () => {
+            parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'children' } }, '*');
+        };
+
+        document.getElementById('expandBtn').onclick = () => {
+            // Optional: send message to code.ts to expand selected nodes in Figma if possible,
+            // or maybe just a UI feature. For now, it stays as a placeholder.
+        };
+
+        // Exporter State
+        const validCountBtn = document.getElementById('validCountBtn');
+        const uploadCloudBtn = document.getElementById('uploadCloudBtn');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+        const jsonOutput = document.getElementById('jsonOutput');
+
+        const apiKeyInput = document.getElementById('apiKey');
+        const userIdInput = document.getElementById('userId');
+
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+
+        settingsBtn.onclick = () => {
+            if (settingsPanel.style.display === 'none') {
+                settingsPanel.style.display = 'flex';
+                settingsBtn.style.backgroundColor = 'var(--accent-color)';
+            } else {
+                settingsPanel.style.display = 'none';
+                settingsBtn.style.backgroundColor = '#444';
+            }
+        };
+
+        apiKeyInput.addEventListener('blur', () => {
+            parent.postMessage({ pluginMessage: { type: 'save-settings', apiKey: apiKeyInput.value.trim() } }, '*');
+        });
+        userIdInput.addEventListener('blur', () => {
+            parent.postMessage({ pluginMessage: { type: 'save-settings', userId: userIdInput.value.trim() } }, '*');
+        });
+
+        document.getElementById('clearCacheBtn').onclick = () => {
+            if (confirm('Clear the upload cache? This will re-upload all images next time.')) {
+                parent.postMessage({ pluginMessage: { type: 'clear-cache' } }, '*');
+            }
+        };
+
+        document.getElementById('resetSettingsBtn').onclick = () => {
+            if (confirm('Reset API key and User ID?')) {
+                apiKeyInput.value = '';
+                userIdInput.value = '';
+                parent.postMessage({ pluginMessage: { type: 'reset-settings' } }, '*');
+            }
+        };
+
+        const statusOutput = document.getElementById('statusOutput');
+
+        function setStatus(text, append = true) {
+            statusOutput.style.display = 'block';
+            if (append) {
+                statusOutput.innerText = `> ${text}\n` + statusOutput.innerText;
+            } else {
+                statusOutput.innerText = `> ${text}\n`;
+            }
+        }
+
+        const copyJsonBtn = document.getElementById('copyJsonBtn');
+        copyJsonBtn.onclick = () => {
+            if (!jsonOutput.value) return;
+            jsonOutput.select();
+            document.execCommand('copy');
+
+            // Visual feedback
+            const originalTitle = copyJsonBtn.title;
+            copyJsonBtn.title = "Copied!";
+            copyJsonBtn.style.color = "var(--success-color)";
+            setTimeout(() => {
+                copyJsonBtn.title = originalTitle;
+                copyJsonBtn.style.color = "";
+                window.getSelection().removeAllRanges();
+            }, 1000);
+        };
+
+        uploadCloudBtn.onclick = () => {
+            const key = apiKeyInput.value.trim();
+            const userId = userIdInput.value.trim();
+            if (!key) return alert('Please provide a Roblox Open Cloud API Key!');
+            if (!userId) return alert('Please provide your Roblox User ID!');
+
+            jsonOutput.value = '';
+            setStatus('Processing nodes for Cloud Upload...', false);
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey: key, userId: userId } }, '*');
+        };
+
+        downloadZipBtn.onclick = () => {
+            jsonOutput.value = '';
+            setStatus('Processing nodes for ZIP Download...', false);
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: true } }, '*');
+        };
+
+        // Receive Messages
+        window.onmessage = async (event) => {
+            const msg = event.data.pluginMessage;
+            if (!msg) return;
+
+            if (msg.type === 'load-settings') {
+                if (msg.apiKey) apiKeyInput.value = msg.apiKey;
+                if (msg.userId) userIdInput.value = msg.userId;
+            } else if (msg.type === 'selection-change') {
+                numSelected = msg.selected;
+                numValid = msg.valid;
+                taggerSelectedCount.textContent = numSelected.toString();
+                validCountBtn.textContent = `${numSelected} Selected, ${numValid} Valid`;
+                if (numValid > 0) {
+                    validCountBtn.classList.remove('invalid');
+                } else {
+                    validCountBtn.classList.add('invalid');
+                }
+            } else if (msg.type === 'image-found') {
+                setStatus(`Found image: ${msg.name}`);
+            } else if (msg.type === 'export-complete') {
+                if (msg.isZipMode) {
+                    setStatus('Generating ZIP file...');
+                    try {
+                        const zip = new JSZip();
+                        zip.file("ui_import.json", JSON.stringify(msg.schema, null, 2));
+
+                        for (const [name, bytes] of Object.entries(msg.images)) {
+                            // name comes in as "Images/01__filename.png", we strip the "Images/" part
+                            const flatName = name.replace('Images/', '');
+                            zip.file(flatName, bytes, { binary: true });
+                        }
+
+                        const content = await zip.generateAsync({ type: "blob" });
+
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(content);
+                        a.download = "Bloxporter_Export.zip";
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+
+                        jsonOutput.value = JSON.stringify(msg.schema, null, 2);
+                    } catch (e) {
+                        setStatus(`ZIP generation failed: ${e.message}`);
+                        console.error(e);
+                    }
+                } else {
+                    const count = msg.imageCount || 0;
+                    if (count > 0) {
+                        setStatus(`Uploading ${count} images to Roblox...`);
+                        parent.postMessage({
+                            pluginMessage: {
+                                type: 'start-uploads',
+                                apiKey: msg.apiKey,
+                                userId: msg.userId
+                            }
+                        }, '*');
+                    } else {
+                        jsonOutput.value = JSON.stringify(msg.schema, null, 2);
+                        setStatus('Done! Finished Cloud Upload!', true);
+                    }
+                }
+            } else if (msg.type === 'upload-progress') {
+                setStatus(msg.status, true);
+            } else if (msg.type === 'uploads-complete') {
+                jsonOutput.value = JSON.stringify(msg.schema, null, 2);
+                setStatus(`Done! ${msg.successCount}/${msg.totalCount} images uploaded. (${msg.skippedCount} cached)`);
+            }
+        };
+    </script>
+</body>
+
+</html>

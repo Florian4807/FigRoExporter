@@ -1,0 +1,21 @@
+{
+    "name": "FigRoExporter",
+    "id": "figma-to-roblox-plugin",
+    "api": "1.0.0",
+    "main": "code.js",
+    "ui": "ui.html",
+    "editorType": [
+        "figma"
+    ],
+    "networkAccess": {
+        "allowedDomains": [
+            "https://apis.roblox.com",
+            "https://cdnjs.cloudflare.com",
+            "https://figro-proxy.florian-10d.workers.dev"
+        ],
+        "devAllowedDomains": [
+            "http://localhost:3001"
+        ],
+        "reasoning": "Uploads images to Roblox via Open Cloud API. Uses a dedicated Cloudflare Worker to bypass CORS issues securely. Downloads JSZip for zip exporting."
+    }
+}
