@@ -5,825 +5,1376 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --bg-color: #1a1a1a;
-            --panel-bg: #222222;
-            --text-color: #ffffff;
-            --border-color: #333333;
-            --accent-color: #5555aa;
-            --accent-hover: #6666cc;
-            --accent-text: #ffffff;
-            --secondary-bg: #2a2a2a;
-            --icon-color: #aaaaaa;
-            --success-color: #00b050;
-            --danger-color: #cc4444;
-            --tag-bg: #333333;
-            --tag-hover: #444444;
-            --tag-selected: #5555aa;
+            --bg: #0f0f12;
+            --panel: #18181e;
+            --panel2: #222228;
+            --panel3: #2a2a32;
+            --border: #32323a;
+            --text: #f0f0f5;
+            --text-dim: #888;
+            --text-muted: #555;
+            --accent: #6c5ce7;
+            --accent-hover: #7d6ff0;
+            --accent-dim: rgba(108,92,231,0.2);
+            --green: #00d68f;
+            --red: #ff6b6b;
+            --orange: #ff9f43;
+            --blue: #54a0ff;
+            --yellow: #feca57;
+            --purple: #a55eea;
+            --radius: 8px;
+            --radius-sm: 5px;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: Inter, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 12px;
-            margin: 0;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            height: 100vh;
-            box-sizing: border-box;
-            font-size: 12px;
+            font-size: 13px;
+            overflow: hidden;
+            user-select: none;
         }
 
-        .tabs {
+        /* ── TOP BAR ─────────────────────────────────────────── */
+        .topbar {
             display: flex;
-            gap: 8px;
-            margin-bottom: 4px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            height: 48px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        .tab-btn {
-            flex: 1;
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar-logo {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: var(--text);
+        }
+
+        .topbar-logo span { color: var(--accent); }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .profile-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: var(--radius);
+            transition: background 0.15s;
+            border: 1px solid var(--border);
+        }
+
+        .profile-area:hover { background: var(--panel2); border-color: var(--accent); }
+
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: white;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .username { font-weight: 600; font-size: 12px; }
+        .username.placeholder { color: var(--text-muted); }
+
+        .logout-btn {
             background: transparent;
-            color: #888;
-            border: none;
-            padding: 8px;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 4px 12px;
+            border-radius: var(--radius);
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            font-size: 14px;
-            transition: color 0.2s, border-color 0.2s;
+            transition: all 0.15s;
         }
 
-        .tab-btn.active {
-            color: var(--text-color);
-            border-bottom-color: var(--accent-color);
-        }
+        .logout-btn:hover { background: var(--red); border-color: var(--red); color: white; }
 
-        .tab-content {
+        /* ── LOGIN OVERLAY ─────────────────────────────────── */
+        .overlay {
             display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .overlay.show { display: flex; }
+
+        .modal {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            width: 360px;
+            display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
+        }
+
+        .modal h2 { font-size: 18px; font-weight: 800; text-align: center; }
+        .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        .modal p { color: var(--text-dim); font-size: 12px; text-align: center; line-height: 1.5; }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-group input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+
+        .btn {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:hover { background: var(--panel3); }
+        .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+        .btn.primary:hover { background: var(--accent-hover); }
+        .btn.danger { color: var(--red); border-color: rgba(255,107,107,0.3); }
+        .btn.danger:hover { background: rgba(255,107,107,0.1); }
+        .btn.success { background: var(--green); border-color: var(--green); color: #000; }
+        .btn.success:hover { filter: brightness(1.1); }
+        .btn.sm { padding: 4px 10px; font-size: 11px; }
+
+        /* ── CONSOLE ─────────────────────────────────────────── */
+        .console-wrap {
+            flex-shrink: 0;
+            height: 56px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 14px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 11px;
+            line-height: 1.7;
+        }
+
+        .console-wrap:empty::before {
+            content: '> Ready. Select a section to begin.';
+            color: var(--text-muted);
+        }
+
+        .console-line { color: var(--text-dim); }
+        .console-line.s { color: var(--green); }
+        .console-line.e { color: var(--red); }
+        .console-line.i { color: var(--blue); }
+        .console-line.w { color: var(--orange); }
+
+        /* ── MAIN LAYOUT ────────────────────────────────────── */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── SIDEBAR (Sections + Hierarchy) ─────────────────── */
+        .sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 10px 14px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.15s;
+        }
+        .refresh-btn:hover { color: var(--text); background: var(--panel2); }
+
+        .sections-list {
+            flex-shrink: 0;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-item {
+            padding: 7px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.12s;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+        }
+
+        .section-item:hover { background: var(--panel2); }
+        .section-item.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .s-icon { font-size: 16px; flex-shrink: 0; opacity: 0.6; }
+        .section-item.active .s-icon { opacity: 1; }
+
+        .s-name {
+            font-size: 12px;
+            font-weight: 600;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .s-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--panel3);
+            padding: 1px 5px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .section-item.active .s-meta { background: var(--accent); color: white; }
+
+        .sidebar-footer {
+            padding: 6px 14px;
+            border-top: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        /* Hierarchy in sidebar */
+        .sidebar-hierarchy {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .sidebar-hierarchy .panel-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            padding: 0 4px 6px;
+            flex-shrink: 0;
+        }
+
+        .h-tree {
+            flex: 1;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            padding: 6px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .h-node {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.1s;
+        }
+        .h-node:hover { background: var(--panel2); }
+        .h-node.sel { background: var(--accent-dim); border: 1px solid var(--accent); }
+
+        .h-ind { display: inline-block; width: 16px; flex-shrink: 0; color: var(--text-muted); font-size: 10px; }
+        .h-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .h-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+        .h-type { font-size: 9px; color: var(--text-muted); flex-shrink: 0; background: var(--panel3); padding: 1px 5px; border-radius: 3px; }
+        .h-node.sel .h-type { color: var(--accent); background: var(--accent-dim); }
+
+        .h-actions { display: flex; gap: 5px; margin-top: 8px; flex-shrink: 0; }
+        .h-actions .btn { flex: 1; text-align: center; font-size: 11px; padding: 5px; }
+
+        /* ── CENTER ──────────────────────────────────────────── */
+        .center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── PREVIEW ─────────────────────────────────────────── */
+        .preview-area {
+            flex: 1;
+            background: #151518;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .preview-placeholder {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .preview-placeholder .ph-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.3; display: block; }
+        .preview-placeholder .ph-sub { font-size: 11px; margin-top: 6px; opacity: 0.6; }
+
+        .preview-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .preview-img {
+            display: block;
+            border-radius: 4px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+        }
+
+        .preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
+            pointer-events: none;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .highlight-box {
+            position: absolute;
+            border: 2px solid var(--accent);
+            background: rgba(108,92,231,0.15);
+            border-radius: 3px;
+            pointer-events: none;
+            transition: all 0.15s;
+        }
+
+        .preview-name {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── BOTTOM STACK (tagger + images, full width) ────── */
+        .bottom-stack {
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            max-height: 300px;
             overflow-y: auto;
         }
 
-        .tab-content.active {
-            display: flex;
-        }
-
-        .panel {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
+        /* Tagger — full width */
+        .tagger-panel {
+            background: var(--panel);
+            padding: 10px 14px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .header-row {
+        .panel-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+        }
+
+        .layer-info {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
 
-        .selected-count {
-            font-size: 16px;
+        .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        .layer-name {
+            font-weight: 700;
+            font-size: 13px;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .layer-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .layer-dim {
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* Type buttons (auto-apply, horizontal row) */
+        .type-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .type-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.12s;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .type-btn:hover { background: var(--panel3); border-color: var(--text-muted); }
+        .type-btn.active { background: var(--accent); border-color: var(--accent); }
+        .type-btn.active span { color: white; }
+
+        .type-btn-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            opacity: 0.6;
+        }
+
+        .type-btn span {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .type-btn.active .type-btn-icon { opacity: 1; }
+
+        /* Image Manager — full width */
+        .image-panel {
+            background: var(--panel);
+            padding: 10px 14px;
+        }
+
+        .img-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .img-count {
+            background: var(--accent);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
             font-weight: 700;
         }
 
-        .selected-count span {
-            color: var(--accent-color);
-        }
-
-        .toggle-group {
-            display: flex;
-            background-color: #111;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
-
-        .toggle-btn {
-            background: transparent;
-            color: #888;
-            border: none;
-            padding: 6px 10px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
-        }
-
-        .toggle-btn.active {
-            background-color: var(--accent-color);
-            color: #fff;
-        }
-
-        .btn-full {
-            background-color: var(--secondary-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            text-align: center;
-            transition: background-color 0.2s;
-        }
-
-        .btn-full:hover {
-            background-color: #333;
-        }
-
-        .info-text {
-            color: #888;
-            font-size: 11px;
-        }
-
-        .row {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-half {
-            flex: 1;
-            background-color: transparent;
-            color: var(--danger-color);
-            border: 1px solid rgba(204, 68, 68, 0.3);
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-half:hover {
-            background-color: rgba(204, 68, 68, 0.1);
-        }
-
-        .tags-grid {
+        .img-grid {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-        }
-
-        .json-wrapper {
-            position: relative;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 20px;
-        }
-
-        .copy-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 32px;
-            height: 32px;
-            background-color: var(--secondary-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-color);
-            transition: all 0.2s;
-        }
-
-        .copy-btn:hover {
-            background-color: #444;
-            color: white;
-        }
-
-        .copy-btn svg {
-            width: 14px;
-            height: 14px;
-            fill: currentColor;
-        }
-
-        textarea {
-            width: 100%;
-            height: calc(100vh - 180px);
-            min-height: 100px;
-            background-color: var(--secondary-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px;
-            padding-right: 40px;
-            /* Space for copy btn */
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 11px;
-            resize: none;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-        .tag-pill {
-            background-color: var(--tag-bg);
-            border: 1px solid var(--border-color);
-            color: #ccc;
-            padding: 6px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-            user-select: none;
-        }
-
-        .tag-pill:hover {
-            background-color: var(--tag-hover);
-            color: #fff;
-        }
-
-        .tag-pill.selected {
-            background-color: var(--tag-selected);
-            border-color: var(--accent-hover);
-            color: #fff;
-        }
-
-        .selected-tags-box {
-            background-color: #111;
-            border: 1px dashed var(--border-color);
-            border-radius: 6px;
-            padding: 12px;
-            min-height: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .empty-tags {
-            color: #666;
-            font-style: italic;
-        }
-
-        .apply-btn {
-            flex: 2;
-            background-color: var(--accent-color);
-            border: none;
-            color: white;
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-
-        .apply-btn:hover {
-            background-color: var(--accent-hover);
-        }
-
-        .clear-btn {
-            flex: 1;
-            background-color: transparent;
-            border: 1px solid var(--border-color);
-            color: white;
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .clear-btn:hover {
-            background-color: var(--secondary-bg);
-        }
-
-        .export-header {
-            display: flex;
-            gap: 8px;
-            align-items: stretch;
-            height: 36px;
-        }
-
-        .valid-count-btn {
-            flex: 1;
-            background-color: var(--success-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: default;
-        }
-
-        .valid-count-btn.invalid {
-            background-color: var(--danger-color);
-        }
-
-        .icon-btn {
-            width: 36px;
-            height: 36px;
-            background-color: var(--success-color);
-            border: none;
-            border-radius: 6px;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: filter 0.2s;
-        }
-
-        .icon-btn:hover {
-            filter: brightness(1.2);
-        }
-
-        .icon-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-        }
-
-        textarea {
-            flex-grow: 1;
-            resize: none;
-            font-family: monospace;
-            font-size: 11px;
-            padding: 12px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            white-space: pre-wrap;
-            outline: none;
+            margin-bottom: 8px;
+            max-height: 110px;
             overflow-y: auto;
         }
 
-        textarea:focus {
-            border-color: var(--accent-color);
+        .img-card {
+            width: 70px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
         }
 
-        .input-group {
+        .img-card.skip { opacity: 0.4; }
+
+        .img-thumb {
+            width: 70px;
+            height: 44px;
+            object-fit: cover;
+            display: block;
+            background: #222;
+        }
+
+        .img-info {
+            padding: 3px 5px;
+            font-size: 9px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .img-actions {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            border-top: 1px solid var(--border);
         }
 
-        input {
-            background-color: #111;
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 12px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus {
-            border-color: var(--accent-color);
-        }
-
-        details {
-            background-color: var(--panel-bg);
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-
-        summary {
-            padding: 10px 12px;
-            font-weight: 600;
+        .img-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 9px;
+            padding: 3px;
             cursor: pointer;
-            list-style: none;
-            user-select: none;
-            outline: none;
+            transition: color 0.1s;
+        }
+        .img-btn:hover { color: var(--text); }
+        .img-btn.skip:hover { color: var(--orange); }
+        .img-btn.del:hover { color: var(--red); }
+
+        .img-btns { display: flex; gap: 5px; }
+        .img-btns .btn { flex: 1; text-align: center; font-size: 11px; }
+
+        .no-select-msg {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 20px 10px;
+            line-height: 1.5;
         }
 
-        summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .settings-content {
-            padding: 0 12px 12px 12px;
+        /* ── STATUS BAR ──────────────────────────────────────── */
+        .statusbar {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
+            align-items: center;
+            gap: 10px;
+            padding: 0 14px;
+            height: 44px;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
         }
 
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
+        .status-text {
+            color: var(--text-dim);
+            font-size: 12px;
+            flex: 1;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 4px;
+        .statusbar .export-btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 7px 20px;
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #777;
-        }
+        .statusbar .export-btn:hover { background: var(--accent-hover); }
+        .statusbar .export-btn:disabled { background: var(--panel3); color: var(--text-muted); cursor: not-allowed; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3a3a44; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a4a55; }
     </style>
 </head>
 
 <body>
-    <div class="tabs">
-        <button class="tab-btn active" id="tabTagger">Tagger</button>
-        <button class="tab-btn" id="tabExporter">Exporter</button>
-    </div>
-
-    <!-- TAGGER TAB -->
-    <div class="tab-content active" id="contentTagger">
-        <div class="panel">
-            <div class="header-row">
-                <div class="selected-count">Selected · <span id="taggerSelectedCount">0</span></div>
-                <div class="toggle-group">
-                    <button class="toggle-btn active" id="targetSelection"
-                        title="Apply tags only to the selected layer">Selection</button>
-                    <button class="toggle-btn" id="targetDescendants"
-                        title="Apply tags to the selected layer AND all nested child layers">+ Descendants</button>
-                </div>
-            </div>
-
-            <button class="btn-full" id="expandBtn" title="Expand the selected layer in Figma">Expand</button>
-            <div class="info-text">Select a layer/group/frame to begin.</div>
-
-            <div class="row">
-                <button class="btn-half" id="resetSelectedBtn" title="Remove all tags from the selected layer">Reset
-                    selected</button>
-                <button class="btn-half" id="resetChildrenBtn"
-                    title="Remove all tags from all nested child layers">Reset children</button>
-            </div>
-            <div class="info-text">Options above reset the tags on selected layers.</div>
+    <!-- TOP BAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">Fig<span>Ro</span></div>
         </div>
-
-        <div class="panel">
-            <div style="font-weight:600; font-size: 13px; margin-bottom: -4px;">Tags</div>
-            <div class="info-text">Click tags to stack them, then apply.</div>
-
-            <div class="tags-grid" id="tagsGrid">
-                <div class="tag-pill" data-tag="#" title="Hash prefix (General tagging)">#</div>
-                <div class="tag-pill" data-tag="_image" title="Force this layer to be exported as a flat ImageLayer">
-                    _image</div>
-                <div class="tag-pill" data-tag="_button"
-                    title="Convert this layered Frame/Image to a GuiButton/TextButton">_button</div>
-                <div class="tag-pill" data-tag="_scroll" title="Convert this Frame to a ScrollingFrame">_scroll</div>
-                <div class="tag-pill" data-tag="_lock"
-                    title="Lock the proportions or specific constraints on this element">_lock</div>
-                <div class="tag-pill" data-tag="_ignore" title="Skip exporting this layer to Roblox entirely">_ignore
-                </div>
-                <div class="tag-pill" data-tag="_hover" title="Interactive State: Hover">_hover</div>
-                <div class="tag-pill" data-tag="_clicked" title="Interactive State: Clicked/Pressed">_clicked</div>
-                <div class="tag-pill" data-tag="_toggled" title="Interactive State: Active/Toggled">_toggled</div>
-                <div class="tag-pill" data-tag="_disabled" title="Interactive State: Disabled">_disabled</div>
-                <div class="tag-pill" data-tag="_parent"
-                    title="Export this layer relative to its immediate parent bounds">_parent</div>
-                <div class="tag-pill" data-tag="_scrollx" title="Horizontal ScrollingFrame explicit tag">_scrollx</div>
-                <div class="tag-pill" data-tag="_abs"
-                    title="Use absolute positioning instead of relative UI alignments">_abs</div>
-                <div class="tag-pill" data-tag="_vpf" title="Export this frame as a ViewportFrame">_vpf</div>
-                <div class="tag-pill" data-tag="_canvas"
-                    title="Use a CanvasGroup for this frame instead of a normal Frame">_canvas</div>
+        <div class="topbar-right">
+            <div class="profile-area" id="profileArea">
+                <div class="avatar"><span id="avatarInitial">?</span></div>
+                <span class="username placeholder" id="topbarUsername">Login</span>
             </div>
-
-            <div style="font-size: 12px; margin-top: 8px;">Selected tags</div>
-            <div class="selected-tags-box" id="selectedTagsBox">
-                <span class="empty-tags">(no tags selected)</span>
-            </div>
-
-            <div class="row">
-                <button class="apply-btn" id="applyTagsBtn">Apply tags</button>
-                <button class="clear-btn" id="clearTagsBtn">Clear</button>
-            </div>
+            <button class="logout-btn" id="logoutBtn" style="display:none;">Logout</button>
+            <button class="btn sm" id="settingsBtn">Settings</button>
         </div>
     </div>
 
-    <!-- EXPORTER TAB -->
-    <div class="tab-content" id="contentExporter">
-        <div class="export-header">
-            <button class="valid-count-btn invalid" id="validCountBtn">0 Selected, 0 Valid</button>
-            <button class="icon-btn" id="uploadCloudBtn" title="Upload to Open Cloud"
-                style="background-color: #00A3A6;">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M19.35 10.04C18.67 6.59 15.64 4 12 4C9.11 4 6.6 5.64 5.35 8.04C2.34 8.36 0 10.91 0 14C0 17.31 2.69 20 6 20H19C21.76 20 24 17.76 24 15C24 12.36 21.95 10.22 19.35 10.04ZM14 13V17H10V13H7L12 8L17 13H14Z" />
-                </svg>
-            </button>
-            <button class="icon-btn" id="downloadZipBtn" title="Download ZIP">
-                <svg viewBox="0 0 24 24">
-                    <path d="M19 9H15V3H9V9H5L12 16L19 9zM5 18V20H19V18H5z" />
-                </svg>
-            </button>
-            <button class="icon-btn" id="settingsBtn" title="Settings" style="background-color: #444;">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
-                </svg>
-            </button>
-        </div>
+    <!-- DEBUG CONSOLE — above main area -->
+    <div class="console-wrap" id="console"></div>
 
-        <div id="settingsPanel" class="panel" style="display: none; padding-top: 10px; padding-bottom: 2px;">
-            <div style="font-weight:600; font-size: 13px; margin-bottom: -4px;">Export Settings & API Keys</div>
-            <div class="input-group" style="padding-top: 6px;">
-                <label for="apiKey">Roblox Open Cloud API Key</label>
-                <input type="password" id="apiKey" placeholder="Enter your Assets API Key..." />
+    <!-- LOGIN OVERLAY -->
+    <div class="overlay" id="loginOverlay">
+        <div class="modal">
+            <h2>Connect Roblox</h2>
+            <p>Login with your Roblox account to upload images directly to Roblox.</p>
+            <div class="input-group">
+                <label>User ID</label>
+                <input type="text" id="loginUserId" placeholder="e.g. 352298720" />
             </div>
             <div class="input-group">
-                <label for="userId">Roblox User ID</label>
-                <input type="text" id="userId" placeholder="e.g. 352298720" />
+                <label>API Key</label>
+                <input type="password" id="loginApiKey" placeholder="x-api-key from Roblox Developer Hub" />
             </div>
-            <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 10px;">
-                <button class="btn-full" id="clearCacheBtn" style="flex: 1; padding: 6px; font-size: 11px;">Clear
-                    Cache</button>
-                <button class="btn-full" id="resetSettingsBtn" style="flex: 1; padding: 6px; font-size: 11px;">Reset
-                    All</button>
+            <div class="input-group">
+                <label>Username (optional)</label>
+                <input type="text" id="loginUsername" placeholder="Your Roblox username" />
+            </div>
+            <button class="btn primary" id="loginBtn" style="text-align:center;">Connect Account</button>
+            <button class="btn" id="loginCancelBtn" style="text-align:center;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS OVERLAY -->
+    <div class="overlay" id="settingsOverlay">
+        <div class="modal">
+            <h3>Export Settings</h3>
+            <div class="input-group">
+                <label>API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="Roblox Open Cloud API Key" />
+            </div>
+            <div class="input-group">
+                <label>User ID</label>
+                <input type="text" id="userIdInput" placeholder="e.g. 352298720" />
+            </div>
+            <div class="btn danger" id="clearCacheBtn" style="text-align:center;">Clear Upload Cache</div>
+            <div class="btn" id="resetSettingsBtn" style="text-align:center;">Reset All</div>
+            <button class="btn" id="settingsCloseBtn" style="text-align:center;">Close</button>
+        </div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div class="main">
+        <!-- SIDEBAR: Sections + Hierarchy -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Sections
+                <button class="refresh-btn" id="refreshBtn" title="Refresh">↻</button>
+            </div>
+            <div class="sections-list" id="sectionsList">
+                <div class="no-select-msg" style="padding:8px;">No sections found.<br>Add frames to your Figma page.</div>
+            </div>
+            <div class="sidebar-footer" id="sidebarFooter">0 items</div>
+
+            <!-- Hierarchy inside sidebar -->
+            <div class="sidebar-hierarchy">
+                <div class="panel-title">Hierarchy</div>
+                <div class="h-tree" id="hierarchyTree">
+                    <div class="no-select-msg" style="padding:8px;">Select a section</div>
+                </div>
+                <div class="h-actions">
+                    <button class="btn" id="resetSelBtn">Reset Selected</button>
+                    <button class="btn" id="resetChildBtn">Reset Children</button>
+                </div>
             </div>
         </div>
 
-        <div id="statusOutput"
-            style="font-family: monospace; font-size: 11px; padding: 8px; color: var(--success-color); background-color: var(--secondary-bg); border-radius: 6px; margin-bottom: 8px; white-space: pre-wrap; display: none;">
-        </div>
+        <!-- CENTER: Preview + Tagger + Images -->
+        <div class="center">
+            <!-- Preview -->
+            <div class="preview-area" id="previewArea">
+                <div class="preview-placeholder" id="previewPlaceholder">
+                    <span class="ph-icon">◻</span>
+                    Select a section to preview
+                    <div class="ph-sub">Click elements in the hierarchy to highlight</div>
+                </div>
+                <div class="preview-wrapper" id="previewWrapper" style="display:none;">
+                    <img class="preview-img" id="previewImg" />
+                    <div class="preview-overlay" id="previewOverlay">
+                        <div class="highlight-box" id="highlightBox" style="display:none;"></div>
+                    </div>
+                    <div class="preview-name" id="previewName"></div>
+                </div>
+            </div>
 
-        <div class="json-wrapper">
-            <textarea id="jsonOutput" readonly placeholder="Exported JSON will appear here..."></textarea>
-            <button class="copy-btn" id="copyJsonBtn" title="Copy to Clipboard">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
-                </svg>
-            </button>
+            <!-- Bottom stack: Tagger + Image Manager (full width) -->
+            <div class="bottom-stack">
+                    <!-- Tagger -->
+                <div class="tagger-panel">
+                    <div class="panel-title">Layer Properties</div>
+
+                    <div id="layerInfoEmpty">
+                        <div class="no-select-msg">Click a layer in the hierarchy to tag it</div>
+                    </div>
+
+                    <div id="layerInfo" style="display:none;">
+                        <div class="layer-info">
+                            <div class="layer-dot" id="layerDot"></div>
+                            <span class="layer-name" id="layerName"></span>
+                            <span class="layer-badge" id="layerBadge"></span>
+                            <span class="layer-dim" id="layerDim"></span>
+                            <button class="btn danger sm" id="resetLayerBtn" style="margin-left:auto; flex-shrink:0;">Reset</button>
+                        </div>
+
+                        <!-- Type buttons (auto-apply on click) -->
+                        <div class="type-buttons" id="typeButtons">
+                            <div class="type-btn" data-tag="" data-type="Frame" title="Frame">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                                <span>Frame</span>
+                            </div>
+                            <div class="type-btn" data-tag="_canvas" data-type="CanvasGroup" title="CanvasGroup">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="5" y="5" width="3" height="3" fill="currentColor" opacity=".5"/><rect x="10" y="5" width="3" height="3" fill="currentColor" opacity=".5"/><rect x="5" y="10" width="3" height="3" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="3" height="3" fill="currentColor" opacity=".5"/></svg>
+                                <span>Canvas</span>
+                            </div>
+                            <div class="type-btn" data-tag="" data-type="TextLabel" title="TextLabel">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h12M9 4v11M6 15h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                <span>Text Label</span>
+                            </div>
+                            <div class="type-btn" data-tag="_button" data-type="TextButton" title="TextButton">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M5 11h8M9 8v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                <span>Text Button</span>
+                            </div>
+                            <div class="type-btn" data-tag="" data-type="TextBox" title="TextBox (Input)">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M5 9h8M5 12h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></svg>
+                                <span>Text Box</span>
+                            </div>
+                            <div class="type-btn" data-tag="_image" data-type="ImageLabel" title="ImageLabel">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="6.5" cy="7" r="1.5" fill="currentColor" opacity=".6"/><path d="M2 12l4-4 3 3 2-2 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>Image Label</span>
+                            </div>
+                            <div class="type-btn" data-tag="_button_image" data-type="ImageButton" title="ImageButton">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="4" y="4" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1" stroke-dasharray="2 1" opacity=".5"/></svg>
+                                <span>Image Button</span>
+                            </div>
+                            <div class="type-btn" data-tag="_scroll" data-type="ScrollingFrame" title="ScrollingFrame">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M5 6h8M5 9h8M5 12h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/><path d="M14 5l2 2-2 2M4 14l-2 2 2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/></svg>
+                                <span>Scroll Frame</span>
+                            </div>
+                            <div class="type-btn" data-tag="_vpf" data-type="ViewportFrame" title="ViewportFrame">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="9" cy="9" r="3" stroke="currentColor" stroke-width="1.2" opacity=".5"/><path d="M9 6v6M6 9h6" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".4"/></svg>
+                                <span>Viewport Frame</span>
+                            </div>
+                            <div class="type-btn" data-tag="_ignore" data-type="Ignored" title="Exclude from export">
+                                <svg class="type-btn-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                <span>Exclude</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Manager -->
+                <div class="image-panel">
+                    <div class="img-header">
+                        <div class="panel-title" style="margin:0;">Exported Images</div>
+                        <span class="img-count" id="imgCount">0</span>
+                    </div>
+                    <div class="img-grid" id="imgGrid">
+                        <div class="no-select-msg" style="padding:8px;">Export to see images</div>
+                    </div>
+                    <div class="img-btns">
+                        <button class="btn" id="zipBtn">Download ZIP</button>
+                        <button class="btn success" id="uploadBtn">Upload to Roblox</button>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="statusbar">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Ready — Select a section</span>
+        <button class="export-btn" id="exportBtn" disabled>Export</button>
     </div>
 
     <script>
-        // Tab switching
-        const tabTagger = document.getElementById('tabTagger');
-        const tabExporter = document.getElementById('tabExporter');
-        const contentTagger = document.getElementById('contentTagger');
-        const contentExporter = document.getElementById('contentExporter');
+        // ── State ───────────────────────────────────────────────
+        let sections = [];
+        let currentHierarchy = null;
+        let selectedNodeId = null;
+        let selectedSectionId = null;
+        let highlightedNodeId = null;
+        let exportImages = {};
+        let currentSchema = null;
+        let apiKey = '', userId = '', robloxUsername = '';
+        let sectionWidth = 0, sectionHeight = 0;
 
-        tabTagger.onclick = () => {
-            tabTagger.classList.add('active');
-            tabExporter.classList.remove('active');
-            contentTagger.classList.add('active');
-            contentExporter.classList.remove('active');
-        };
+        // ── Console ────────────────────────────────────────────
+        const consoleEl = document.getElementById('console');
 
-        tabExporter.onclick = () => {
-            tabExporter.classList.add('active');
-            tabTagger.classList.remove('active');
-            contentExporter.classList.add('active');
-            contentTagger.classList.remove('active');
-        };
+        function log(msg, type = '') {
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            line.textContent = `> ${msg}`;
+            consoleEl.insertBefore(line, consoleEl.firstChild);
+            while (consoleEl.children.length > 80) consoleEl.removeChild(consoleEl.lastChild);
+        }
 
-        // UI State
-        let stagedTags = [];
-        let numSelected = 0;
-        let numValid = 0;
-        let applyToDescendants = false;
+        function setStatus(text, color = 'var(--green)') {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('statusDot').style.background = color;
+        }
 
-        // Tagger State Management
-        const tagsGrid = document.getElementById('tagsGrid');
-        const selectedTagsBox = document.getElementById('selectedTagsBox');
-        const clearTagsBtn = document.getElementById('clearTagsBtn');
-        const applyTagsBtn = document.getElementById('applyTagsBtn');
-        const taggerSelectedCount = document.getElementById('taggerSelectedCount');
-        const targetSelectionBtn = document.getElementById('targetSelection');
-        const targetDescendantsBtn = document.getElementById('targetDescendants');
+        // ── Profile / Login ────────────────────────────────────
+        function updateProfileUI() {
+            const init = document.getElementById('avatarInitial');
+            const username = document.getElementById('topbarUsername');
+            const logoutBtn = document.getElementById('logoutBtn');
 
-        function updateStagedTagsUI() {
-            Array.from(tagsGrid.children).forEach(el => {
-                const tag = el.getAttribute('data-tag');
-                if (stagedTags.includes(tag)) {
-                    el.classList.add('selected');
-                } else {
-                    el.classList.remove('selected');
-                }
-            });
-
-            if (stagedTags.length === 0) {
-                selectedTagsBox.innerHTML = '<span class="empty-tags">(no tags selected)</span>';
+            if (robloxUsername && userId) {
+                init.textContent = robloxUsername.charAt(0).toUpperCase();
+                username.textContent = robloxUsername;
+                username.classList.remove('placeholder');
+                logoutBtn.style.display = 'block';
             } else {
-                selectedTagsBox.innerHTML = '';
-                stagedTags.forEach(tag => {
-                    const span = document.createElement('div');
-                    span.className = 'tag-pill selected';
-                    span.textContent = tag;
-                    span.onclick = () => {
-                        stagedTags = stagedTags.filter(t => t !== tag);
-                        updateStagedTagsUI();
-                    };
-                    selectedTagsBox.appendChild(span);
-                });
+                init.textContent = '?';
+                username.textContent = 'Login';
+                username.classList.add('placeholder');
+                logoutBtn.style.display = 'none';
             }
         }
 
-        tagsGrid.addEventListener('click', (e) => {
-            if (e.target.classList.contains('tag-pill')) {
-                const tag = e.target.getAttribute('data-tag');
-                if (stagedTags.includes(tag)) {
-                    stagedTags = stagedTags.filter(t => t !== tag);
-                } else {
-                    stagedTags.push(tag);
-                }
-                updateStagedTagsUI();
-            }
-        });
-
-        clearTagsBtn.onclick = () => {
-            stagedTags = [];
-            updateStagedTagsUI();
+        document.getElementById('profileArea').onclick = () => {
+            document.getElementById('loginUserId').value = userId;
+            document.getElementById('loginApiKey').value = apiKey;
+            document.getElementById('loginUsername').value = robloxUsername;
+            document.getElementById('loginOverlay').classList.add('show');
         };
 
-        applyTagsBtn.onclick = () => {
-            if (stagedTags.length === 0) return;
-            parent.postMessage({ pluginMessage: { type: 'apply-tags', tags: stagedTags, applyToDescendants } }, '*');
-            stagedTags = [];
-            updateStagedTagsUI();
+        document.getElementById('loginCancelBtn').onclick = () => document.getElementById('loginOverlay').classList.remove('show');
+
+        document.getElementById('loginBtn').onclick = () => {
+            const uid = document.getElementById('loginUserId').value.trim();
+            const key = document.getElementById('loginApiKey').value.trim();
+            const name = document.getElementById('loginUsername').value.trim();
+            if (!uid) { alert('Enter your User ID'); return; }
+            if (!key) { alert('Enter your API Key'); return; }
+            userId = uid; apiKey = key; robloxUsername = name || 'User_' + uid;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername } }, '*');
+            document.getElementById('loginOverlay').classList.remove('show');
+            updateProfileUI();
+            log(`Logged in as ${robloxUsername} (ID: ${userId})`, 's');
+            setStatus(`Logged in as ${robloxUsername}`);
         };
 
-        targetSelectionBtn.onclick = () => {
-            applyToDescendants = false;
-            targetSelectionBtn.classList.add('active');
-            targetDescendantsBtn.classList.remove('active');
-        };
-        targetDescendantsBtn.onclick = () => {
-            applyToDescendants = true;
-            targetDescendantsBtn.classList.add('active');
-            targetSelectionBtn.classList.remove('active');
+        document.getElementById('logoutBtn').onclick = () => {
+            if (!confirm('Log out?')) return;
+            parent.postMessage({ pluginMessage: { type: 'logout' } }, '*');
+            userId = ''; apiKey = ''; robloxUsername = '';
+            updateProfileUI();
+            log('Logged out.', 'w');
         };
 
-        document.getElementById('resetSelectedBtn').onclick = () => {
-            parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'selection' } }, '*');
+        // ── Settings ────────────────────────────────────────────
+        document.getElementById('settingsBtn').onclick = () => {
+            document.getElementById('apiKeyInput').value = apiKey;
+            document.getElementById('userIdInput').value = userId;
+            document.getElementById('settingsOverlay').classList.add('show');
         };
 
-        document.getElementById('resetChildrenBtn').onclick = () => {
-            parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'children' } }, '*');
+        document.getElementById('settingsCloseBtn').onclick = () => {
+            const k = document.getElementById('apiKeyInput').value.trim();
+            const u = document.getElementById('userIdInput').value.trim();
+            if (k) { apiKey = k; parent.postMessage({ pluginMessage: { type: 'save-settings', apiKey: k } }, '*'); }
+            if (u) { userId = u; parent.postMessage({ pluginMessage: { type: 'save-settings', userId: u } }, '*'); }
+            document.getElementById('settingsOverlay').classList.remove('show');
         };
-
-        document.getElementById('expandBtn').onclick = () => {
-            // Optional: send message to code.ts to expand selected nodes in Figma if possible,
-            // or maybe just a UI feature. For now, it stays as a placeholder.
-        };
-
-        // Exporter State
-        const validCountBtn = document.getElementById('validCountBtn');
-        const uploadCloudBtn = document.getElementById('uploadCloudBtn');
-        const downloadZipBtn = document.getElementById('downloadZipBtn');
-        const jsonOutput = document.getElementById('jsonOutput');
-
-        const apiKeyInput = document.getElementById('apiKey');
-        const userIdInput = document.getElementById('userId');
-
-        const settingsBtn = document.getElementById('settingsBtn');
-        const settingsPanel = document.getElementById('settingsPanel');
-
-        settingsBtn.onclick = () => {
-            if (settingsPanel.style.display === 'none') {
-                settingsPanel.style.display = 'flex';
-                settingsBtn.style.backgroundColor = 'var(--accent-color)';
-            } else {
-                settingsPanel.style.display = 'none';
-                settingsBtn.style.backgroundColor = '#444';
-            }
-        };
-
-        apiKeyInput.addEventListener('blur', () => {
-            parent.postMessage({ pluginMessage: { type: 'save-settings', apiKey: apiKeyInput.value.trim() } }, '*');
-        });
-        userIdInput.addEventListener('blur', () => {
-            parent.postMessage({ pluginMessage: { type: 'save-settings', userId: userIdInput.value.trim() } }, '*');
-        });
 
         document.getElementById('clearCacheBtn').onclick = () => {
-            if (confirm('Clear the upload cache? This will re-upload all images next time.')) {
-                parent.postMessage({ pluginMessage: { type: 'clear-cache' } }, '*');
-            }
+            if (!confirm('Clear upload cache?')) return;
+            parent.postMessage({ pluginMessage: { type: 'clear-cache' } }, '*');
+            log('Cache cleared.', 'w');
         };
 
         document.getElementById('resetSettingsBtn').onclick = () => {
-            if (confirm('Reset API key and User ID?')) {
-                apiKeyInput.value = '';
-                userIdInput.value = '';
-                parent.postMessage({ pluginMessage: { type: 'reset-settings' } }, '*');
-            }
+            if (!confirm('Reset all?')) return;
+            apiKey = ''; userId = '';
+            document.getElementById('apiKeyInput').value = '';
+            document.getElementById('userIdInput').value = '';
+            parent.postMessage({ pluginMessage: { type: 'reset-settings' } }, '*');
+            log('Settings reset.', 'w');
         };
 
-        const statusOutput = document.getElementById('statusOutput');
+        // ── Sections Sidebar ───────────────────────────────────
+        document.getElementById('refreshBtn').onclick = () => parent.postMessage({ pluginMessage: { type: 'refresh-sections' } }, '*');
 
-        function setStatus(text, append = true) {
-            statusOutput.style.display = 'block';
-            if (append) {
-                statusOutput.innerText = `> ${text}\n` + statusOutput.innerText;
-            } else {
-                statusOutput.innerText = `> ${text}\n`;
+        function renderSections() {
+            const list = document.getElementById('sectionsList');
+            const footer = document.getElementById('sidebarFooter');
+
+            if (!sections.length) {
+                list.innerHTML = '<div class="no-select-msg">No sections found.<br>Add frames to your Figma page.</div>';
+                footer.textContent = '0 items';
+                return;
+            }
+
+            list.innerHTML = '';
+            sections.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'section-item' + (s.id === selectedSectionId ? ' active' : '');
+                el.innerHTML = `<span class="s-icon">◻</span><span class="s-name" title="${s.name}">${s.name}</span><span class="s-meta">${s.width}×${s.height}</span>`;
+                el.onclick = () => selectSection(s.id);
+                list.appendChild(el);
+            });
+            footer.textContent = `${sections.length} section${sections.length !== 1 ? 's' : ''}`;
+        }
+
+        function selectSection(id) {
+            selectedSectionId = id;
+            highlightedNodeId = null;
+            parent.postMessage({ pluginMessage: { type: 'select-section', sectionId: id } }, '*');
+            renderSections();
+            hideHighlight();
+            hideLayerInfo();
+        }
+
+        // ── Hierarchy Tree ──────────────────────────────────────
+        function renderHierarchyTree(node, container, depth = 0) {
+            if (!node) return;
+
+            const div = document.createElement('div');
+            div.className = 'h-node' + (node.id === highlightedNodeId ? ' sel' : '');
+            div.dataset.id = node.id;
+
+            let indent = '';
+            for (let i = 0; i < depth; i++) indent += '<span class="h-ind"></span>';
+
+            div.innerHTML = `${indent}<span class="h-dot" style="background:${node.tagColor||'#888'}"></span><span class="h-name">${node.name}</span><span class="h-type">${node.tagType||node.figmaType||node.type}</span>`;
+            div.onclick = e => { e.stopPropagation(); selectNode(node.id); };
+            container.appendChild(div);
+
+            if (node.children && node.children.length) {
+                for (const child of node.children) renderHierarchyTree(child, container, depth + 1);
             }
         }
 
-        const copyJsonBtn = document.getElementById('copyJsonBtn');
-        copyJsonBtn.onclick = () => {
-            if (!jsonOutput.value) return;
-            jsonOutput.select();
-            document.execCommand('copy');
+        function renderTree(hierarchy) {
+            const tree = document.getElementById('hierarchyTree');
+            tree.innerHTML = '';
+            if (!hierarchy) { tree.innerHTML = '<div class="no-select-msg" style="padding:10px;">Select a section first</div>'; return; }
+            renderHierarchyTree(hierarchy, tree);
 
-            // Visual feedback
-            const originalTitle = copyJsonBtn.title;
-            copyJsonBtn.title = "Copied!";
-            copyJsonBtn.style.color = "var(--success-color)";
-            setTimeout(() => {
-                copyJsonBtn.title = originalTitle;
-                copyJsonBtn.style.color = "";
-                window.getSelection().removeAllRanges();
-            }, 1000);
+            // Auto-scroll to the selected/highlighted node after rendering
+            if (highlightedNodeId) {
+                const selectedEl = tree.querySelector(`[data-id="${highlightedNodeId}"]`);
+                if (selectedEl) {
+                    selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        function selectNode(id) {
+            selectedNodeId = id;
+            parent.postMessage({ pluginMessage: { type: 'select-node', nodeId: id } }, '*');
+            document.querySelectorAll('.h-node').forEach(el => el.classList.toggle('sel', el.dataset.id === id));
+            // Scroll the clicked node into view
+            const tree = document.getElementById('hierarchyTree');
+            const clickedEl = tree.querySelector(`[data-id="${id}"]`);
+            if (clickedEl) {
+                clickedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // ── Highlight Overlay ───────────────────────────────────
+        function showHighlight(relX, relY, nodeW, nodeH, scale) {
+            const box = document.getElementById('highlightBox');
+            const img = document.getElementById('previewImg');
+
+            if (!img.clientWidth || !sectionWidth) { hideHighlight(); return; }
+
+            const displayScale = scale || (img.clientWidth / sectionWidth);
+            const left = relX * displayScale;
+            const top = relY * displayScale;
+            const w = nodeW * displayScale;
+            const h = nodeH * displayScale;
+
+            box.style.left = left + 'px';
+            box.style.top = top + 'px';
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+            box.style.display = 'block';
+        }
+
+        function hideHighlight() {
+            document.getElementById('highlightBox').style.display = 'none';
+        }
+
+        // ── Layer Info (Tagger) ─────────────────────────────────
+        function showLayerInfo(node) {
+            document.getElementById('layerInfoEmpty').style.display = 'none';
+            document.getElementById('layerInfo').style.display = 'block';
+
+            const color = node.tagColor || node.color || '#888';
+            const type = node.tagType || node.type || 'Frame';
+
+            document.getElementById('layerDot').style.background = color;
+            document.getElementById('layerName').textContent = node.name;
+            document.getElementById('layerBadge').textContent = type;
+            document.getElementById('layerBadge').style.background = color;
+            document.getElementById('layerDim').textContent = `${Math.round(node.width)}×${Math.round(node.height)}`;
+
+            const typeToDataType = {
+                'Frame': 'Frame', 'Frame (Group)': 'Frame', 'Frame (Circle)': 'Frame',
+                'CanvasGroup': 'CanvasGroup', 'TextLabel': 'TextLabel', 'TextButton': 'TextButton',
+                'TextBox': 'TextBox', 'ImageLabel': 'ImageLabel', 'ImageLabel (Vector)': 'ImageLabel',
+                'ImageButton': 'ImageButton', 'ScrollingFrame': 'ScrollingFrame',
+                'ViewportFrame': 'ViewportFrame', 'Ignored': 'Ignored',
+            };
+            const mappedType = typeToDataType[type] || 'Frame';
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-type') === mappedType);
+            });
+        }
+
+        function hideLayerInfo() {
+            document.getElementById('layerInfoEmpty').style.display = 'block';
+            document.getElementById('layerInfo').style.display = 'none';
+        }
+
+        // ── Type buttons (auto-apply on click) ───────────────────
+        document.querySelectorAll('.type-btn').forEach(btn => {
+            btn.onclick = () => {
+                if (!selectedNodeId) return;
+                const type = btn.getAttribute('data-type');
+
+                parent.postMessage({ pluginMessage: { type: 'set-node-type', nodeId: selectedNodeId, robloxType: type } }, '*');
+
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const colorMap = {
+                    'Frame': '#888888', 'CanvasGroup': '#ff9f43', 'TextLabel': '#44cc88',
+                    'TextButton': '#4488ff', 'TextBox': '#54a0ff', 'ImageLabel': '#e6a817',
+                    'ImageButton': '#4488ff', 'ScrollingFrame': '#aa55cc', 'ViewportFrame': '#cc8833',
+                    'Ignored': '#666666'
+                };
+                document.getElementById('layerBadge').textContent = type;
+                document.getElementById('layerBadge').style.background = colorMap[type] || '#888';
+                document.getElementById('layerDot').style.background = colorMap[type] || '#888';
+            };
+        });
+
+        document.getElementById('resetLayerBtn').onclick = () => {
+            if (!selectedNodeId) return;
+            parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'selection' } }, '*');
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         };
 
-        uploadCloudBtn.onclick = () => {
-            const key = apiKeyInput.value.trim();
-            const userId = userIdInput.value.trim();
-            if (!key) return alert('Please provide a Roblox Open Cloud API Key!');
-            if (!userId) return alert('Please provide your Roblox User ID!');
+        document.getElementById('resetSelBtn').onclick = () => parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'selection' } }, '*');
+        document.getElementById('resetChildBtn').onclick = () => parent.postMessage({ pluginMessage: { type: 'reset-tags', scope: 'children' } }, '*');
 
-            jsonOutput.value = '';
-            setStatus('Processing nodes for Cloud Upload...', false);
-            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey: key, userId: userId } }, '*');
-        };
+        // ── Image Manager ───────────────────────────────────────
+        function renderImageManager() {
+            const grid = document.getElementById('imgGrid');
+            const badge = document.getElementById('imgCount');
+            const panel = document.getElementById('imagePanel');
+            const entries = Object.entries(exportImages).filter(([,d]) => !d.deleted);
 
-        downloadZipBtn.onclick = () => {
-            jsonOutput.value = '';
-            setStatus('Processing nodes for ZIP Download...', false);
+            badge.textContent = entries.length;
+
+            if (!entries.length) {
+                grid.innerHTML = '<div class="no-select-msg" style="padding:8px;">Export to see images</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            entries.forEach(([name, data]) => {
+                const card = document.createElement('div');
+                card.className = 'img-card' + (data.skipped ? ' skip' : '');
+                const preview = `data:image/png;base64,${data.base64}`;
+                card.innerHTML = `
+                    <img class="img-thumb" src="${preview}" alt="${name}" />
+                    <div class="img-info" title="${name}">${name}</div>
+                    <div class="img-actions">
+                        <button class="img-btn skip" data-name="${name}">✕</button>
+                        <button class="img-btn del" data-name="${name}">🗑</button>
+                    </div>
+                `;
+                card.querySelector('.skip').onclick = () => { data.skipped = !data.skipped; renderImageManager(); log(`${data.skipped?'Skipped':'Enabled'}: ${name}`, data.skipped?'w':'i'); };
+                card.querySelector('.del').onclick = () => { data.deleted = true; renderImageManager(); log(`Removed: ${name}`, 'w'); };
+                grid.appendChild(card);
+            });
+        }
+
+        // ── Export Buttons ──────────────────────────────────────
+        document.getElementById('zipBtn').onclick = () => {
+            if (!currentSchema) return;
             parent.postMessage({ pluginMessage: { type: 'export', isZipMode: true } }, '*');
+            log('Generating ZIP...', 'i');
         };
 
-        // Receive Messages
+        document.getElementById('uploadBtn').onclick = () => {
+            if (!apiKey || !userId) { alert('Login first (top-right profile icon).'); return; }
+            if (!currentSchema) return;
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey, userId } }, '*');
+            log('Starting upload...', 'i');
+        };
+
+        document.getElementById('exportBtn').onclick = () => {
+            if (!apiKey || !userId) { alert('Login first.'); return; }
+            if (!selectedSectionId) return;
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey, userId } }, '*');
+            log('Exporting...', 'i');
+        };
+
+        // ── Messages from code.ts ───────────────────────────────
         window.onmessage = async (event) => {
             const msg = event.data.pluginMessage;
             if (!msg) return;
 
-            if (msg.type === 'load-settings') {
-                if (msg.apiKey) apiKeyInput.value = msg.apiKey;
-                if (msg.userId) userIdInput.value = msg.userId;
-            } else if (msg.type === 'selection-change') {
-                numSelected = msg.selected;
-                numValid = msg.valid;
-                taggerSelectedCount.textContent = numSelected.toString();
-                validCountBtn.textContent = `${numSelected} Selected, ${numValid} Valid`;
-                if (numValid > 0) {
-                    validCountBtn.classList.remove('invalid');
-                } else {
-                    validCountBtn.classList.add('invalid');
-                }
-            } else if (msg.type === 'image-found') {
-                setStatus(`Found image: ${msg.name}`);
-            } else if (msg.type === 'export-complete') {
-                if (msg.isZipMode) {
-                    setStatus('Generating ZIP file...');
-                    try {
-                        const zip = new JSZip();
-                        zip.file("ui_import.json", JSON.stringify(msg.schema, null, 2));
+            switch (msg.type) {
+                case 'load-settings':
+                    apiKey = msg.apiKey || '';
+                    userId = msg.userId || '';
+                    robloxUsername = msg.robloxUsername || '';
+                    updateProfileUI();
+                    break;
 
-                        for (const [name, bytes] of Object.entries(msg.images)) {
-                            // name comes in as "Images/01__filename.png", we strip the "Images/" part
-                            const flatName = name.replace('Images/', '');
-                            zip.file(flatName, bytes, { binary: true });
+                case 'logged-out':
+                    userId = ''; apiKey = ''; robloxUsername = '';
+                    updateProfileUI();
+                    break;
+
+                case 'log':
+                    log(msg.message, msg.logType || '');
+                    break;
+
+                case 'sections-list':
+                    sections = msg.sections || [];
+                    renderSections();
+                    log(`Found ${sections.length} section${sections.length !== 1 ? 's' : ''}`, 'i');
+                    break;
+
+                case 'selection-change':
+                    // Update hierarchy and sync highlighted node
+                    currentHierarchy = msg.hierarchy || currentHierarchy;
+                    if (msg.highlightedNodeId) highlightedNodeId = msg.highlightedNodeId;
+                    renderTree(currentHierarchy);
+
+                    if (msg.selectedNode) {
+                        showLayerInfo(msg.selectedNode);
+                    }
+
+                    if (msg.valid !== undefined) {
+                        document.getElementById('exportBtn').disabled = !(msg.valid > 0);
+                        if (msg.valid > 0) setStatus(`${msg.valid} valid layer${msg.valid > 1 ? 's' : ''} selected`, 'var(--blue)');
+                    }
+
+                    if (msg.hierarchy) {
+                        selectedSectionId = msg.selectedNode ? msg.selectedNode.id : selectedSectionId;
+                    }
+                    break;
+
+                case 'preview-image':
+                    sectionWidth = msg.sectionWidth || 0;
+                    sectionHeight = msg.sectionHeight || 0;
+                    document.getElementById('previewPlaceholder').style.display = 'none';
+                    const wrap = document.getElementById('previewWrapper');
+                    const img = document.getElementById('previewImg');
+                    wrap.style.display = 'inline-block';
+                    img.src = msg.base64;
+                    img.onload = () => {
+                        sectionWidth = msg.sectionWidth || img.naturalWidth;
+                        sectionHeight = msg.sectionHeight || img.naturalHeight;
+
+                        // Auto-scale to fit the preview area container
+                        const area = document.getElementById('previewArea');
+                        const availW = area.clientWidth - 40;  // padding
+                        const availH = area.clientHeight - 40;
+
+                        const scaleX = availW / sectionWidth;
+                        const scaleY = availH / sectionHeight;
+                        const scale = Math.min(scaleX, scaleY, 1); // never scale up
+
+                        const displayW = Math.round(sectionWidth * scale);
+                        const displayH = Math.round(sectionHeight * scale);
+
+                        img.style.width = displayW + 'px';
+                        img.style.height = displayH + 'px';
+                        img.style.objectFit = 'contain';
+
+                        // Update overlay size
+                        const overlay = document.getElementById('previewOverlay');
+                        overlay.style.width = displayW + 'px';
+                        overlay.style.height = displayH + 'px';
+
+                        // Re-show highlight if any
+                        if (highlightedNodeData && sectionWidth > 0) {
+                            showHighlight(highlightedNodeData.x, highlightedNodeData.y, highlightedNodeData.w, highlightedNodeData.h, scale);
                         }
+                    };
+                    document.getElementById('previewName').textContent = msg.nodeName || '';
+                    break;
 
-                        const content = await zip.generateAsync({ type: "blob" });
+                case 'node-highlighted':
+                    highlightedNodeId = msg.nodeId;
+                    document.querySelectorAll('.h-node').forEach(el => el.classList.toggle('sel', el.dataset.id === msg.nodeId));
 
-                        const a = document.createElement("a");
-                        a.href = URL.createObjectURL(content);
-                        a.download = "Bloxporter_Export.zip";
-                        a.click();
-                        URL.revokeObjectURL(a.href);
+                    if (msg.nodeName) document.getElementById('previewName').textContent = msg.nodeName;
 
-                        jsonOutput.value = JSON.stringify(msg.schema, null, 2);
-                    } catch (e) {
-                        setStatus(`ZIP generation failed: ${e.message}`);
-                        console.error(e);
-                    }
-                } else {
-                    const count = msg.imageCount || 0;
-                    if (count > 0) {
-                        setStatus(`Uploading ${count} images to Roblox...`);
-                        parent.postMessage({
-                            pluginMessage: {
-                                type: 'start-uploads',
-                                apiKey: msg.apiKey,
-                                userId: msg.userId
-                            }
-                        }, '*');
+                    if (msg.relX !== undefined && msg.nodeWidth && sectionWidth) {
+                        highlightedNodeData = { x: msg.relX, y: msg.relY, w: msg.nodeWidth, h: msg.nodeHeight };
+                        const img = document.getElementById('previewImg');
+                        if (img.clientWidth) {
+                            const scale = img.clientWidth / sectionWidth;
+                            showHighlight(msg.relX, msg.relY, msg.nodeWidth, msg.nodeHeight, scale);
+                        }
                     } else {
-                        jsonOutput.value = JSON.stringify(msg.schema, null, 2);
-                        setStatus('Done! Finished Cloud Upload!', true);
+                        hideHighlight();
                     }
-                }
-            } else if (msg.type === 'upload-progress') {
-                setStatus(msg.status, true);
-            } else if (msg.type === 'uploads-complete') {
-                jsonOutput.value = JSON.stringify(msg.schema, null, 2);
-                setStatus(`Done! ${msg.successCount}/${msg.totalCount} images uploaded. (${msg.skippedCount} cached)`);
+
+                    if (msg.nodeName) {
+                        const fakeNode = { name: msg.nodeName, type: 'Node', width: msg.nodeWidth || 0, height: msg.nodeHeight || 0, tagType: 'Frame', tagColor: '#888', color: '#888' };
+                        showLayerInfo(fakeNode);
+                    }
+                    break;
+
+                case 'image-found':
+                    log(`Found image: ${msg.name} (${(msg.size/1024).toFixed(1)} KB)`, 'i');
+                    break;
+
+                case 'node-type-applied':
+                    // Update badge and buttons immediately without waiting for Figma to process
+                    selectedNodeId = msg.nodeId;
+                    document.getElementById('layerName').textContent = msg.nodeName;
+                    document.getElementById('layerBadge').textContent = msg.robloxType;
+                    document.getElementById('layerBadge').style.background = msg.tagColor;
+                    document.getElementById('layerDot').style.background = msg.tagColor;
+
+                    document.querySelectorAll('.type-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.getAttribute('data-type') === msg.robloxType);
+                    });
+                    break;
+
+                case 'hierarchy-updated':
+                    // Full hierarchy was rebuilt — re-render tree with correct selection
+                    currentHierarchy = msg.hierarchy;
+                    highlightedNodeId = msg.selectedNodeId;
+                    renderTree(currentHierarchy);
+                    break;
+
+                case 'export-complete':
+                    currentSchema = msg.schema;
+                    if (msg.isZipMode) {
+                        log('Generating ZIP...', 'i');
+                        try {
+                            const zip = new JSZip();
+                            zip.file('ui_import.json', JSON.stringify(msg.schema, null, 2));
+                            for (const [name, bytes] of Object.entries(msg.images || {})) {
+                                zip.file(name.replace('Images/', ''), bytes, { binary: true });
+                            }
+                            const blob = await zip.generateAsync({ type: 'blob' });
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = 'FigRoExporter.zip';
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                            log('ZIP ready!', 's');
+                            setStatus('ZIP downloaded!', 'var(--green)');
+                        } catch(e) { log(`ZIP error: ${e.message}`, 'e'); }
+                    } else {
+                        log(`Export done. ${msg.imageCount || 0} images.`, 's');
+                        parent.postMessage({ pluginMessage: { type: 'start-uploads', apiKey, userId } }, '*');
+                    }
+                    break;
+
+                case 'upload-progress':
+                    log(msg.status, 'i');
+                    setStatus(msg.status, 'var(--blue)');
+                    break;
+
+                case 'uploads-complete':
+                    log(`Done! ${msg.successCount}/${msg.totalCount} uploaded (${msg.skippedCount} cached).`, 's');
+                    setStatus(`Done — ${msg.successCount} uploaded`, 'var(--green)');
+                    break;
             }
         };
+
+        let highlightedNodeData = null;
+        updateProfileUI();
+        setStatus('Ready — Select a section to begin');
     </script>
 </body>
 

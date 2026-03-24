@@ -35,7 +35,6 @@ interface NodeSchema {
     imageFileName?: string;
     imageIndex?: number;
     assetId?: string;
-    // Phase 2: Scrolling & Layout
     clipsContent?: boolean;
     overflowDirection?: string;
     contentWidth?: number;
@@ -60,8 +59,80 @@ interface NodeSchema {
 
 let imageCounter = 0;
 let imageList: { index: number, fileName: string }[] = [];
-// Store image bytes in the main thread so we can upload from here (no CORS)
 let storedImageBytes: { [name: string]: Uint8Array } = {};
+
+// ── Hierarchy Info (for UI tree display) ────────────────────────────
+
+interface HierarchyNode {
+    id: string;
+    name: string;
+    type: string;
+    width: number;
+    height: number;
+    visible: boolean;
+    tagType: string; // detected Roblox type: "Frame", "TextLabel", "ImageLabel", etc.
+    tagColor: string; // color indicator for the UI
+    children: HierarchyNode[];
+}
+
+function detectRobloxType(node: SceneNode): { type: string; color: string } {
+    const name = node.name.toLowerCase();
+    const tags = name.split('_').slice(1);
+
+    // Tag-based overrides ALWAYS win over Figma type
+    if (tags.includes('ignore')) return { type: 'Ignored', color: '#666666' };
+    if (tags.includes('canvas')) return { type: 'CanvasGroup', color: '#ff9f43' };
+    if (tags.includes('image') || tags.includes('img')) return { type: 'ImageLabel', color: '#e6a817' };
+    if (tags.includes('button') || tags.includes('btn')) {
+        if (node.type === 'TEXT') return { type: 'TextButton', color: '#4488ff' };
+        return { type: 'ImageButton', color: '#4488ff' };
+    }
+    if (tags.includes('scroll')) return { type: 'ScrollingFrame', color: '#aa55cc' };
+    if (tags.includes('vpf')) return { type: 'ViewportFrame', color: '#cc8833' };
+    if (tags.includes('textbox') || tags.includes('input')) return { type: 'TextBox', color: '#54a0ff' };
+
+    if (node.type === 'TEXT') return { type: 'TextLabel', color: '#44cc88' };
+    if (node.type === 'ELLIPSE') return { type: 'Frame (Circle)', color: '#888888' };
+    if (node.type === 'VECTOR') return { type: 'ImageLabel (Vector)', color: '#e6a817' };
+    if (node.type === 'GROUP') return { type: 'Frame (Group)', color: '#888888' };
+
+    // Check for image fills
+    if ('fills' in node) {
+        const fills = (node as any).fills as ReadonlyArray<Paint>;
+        if (fills && fills.some(f => f.type === 'IMAGE')) {
+            return { type: 'ImageLabel', color: '#e6a817' };
+        }
+    }
+
+    return { type: 'Frame', color: '#888888' };
+}
+
+function buildHierarchy(node: SceneNode): HierarchyNode {
+    const detected = detectRobloxType(node);
+    const result: HierarchyNode = {
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        width: 'width' in node ? node.width : 0,
+        height: 'height' in node ? node.height : 0,
+        visible: 'visible' in node ? node.visible : true,
+        tagType: detected.type,
+        tagColor: detected.color,
+        children: [],
+    };
+
+    if ('children' in node) {
+        // Reverse children so visual order matches Figma's layer panel (topmost layer first)
+        const children = (node as SceneNode & { children: readonly SceneNode[] }).children;
+        for (let i = children.length - 1; i >= 0; i--) {
+            result.children.push(buildHierarchy(children[i]));
+        }
+    }
+
+    return result;
+}
+
+// ── Node Walking (for export) ───────────────────────────────────────
 
 async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: number = 0): Promise<NodeSchema | null> {
     const absX = 'absoluteTransform' in node ? node.absoluteTransform[0][2] : 0;
@@ -76,7 +147,6 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
     const name = node.name;
     const tags = name.split('_').slice(1).map(tag => tag.toLowerCase());
 
-    // Check for _ignore
     if (tags.indexOf('ignore') !== -1) {
         return null;
     }
@@ -163,7 +233,6 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
         }
     }
 
-
     // Forced Image / Whiteout Handling
     if (forceImage || isWhiteout) {
         let exportNode = node;
@@ -172,7 +241,6 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
         if (isWhiteout) {
             try {
                 clone = node.clone();
-                // Find all children and the node itself and set their fills to white
                 const nodesToWhite = [clone, ...((clone as any).findAll ? (clone as any).findAll(() => true) : [])];
                 for (const n of nodesToWhite) {
                     if ('fills' in n) {
@@ -197,7 +265,7 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
         imageList.push({ index: base.imageIndex, fileName });
 
         if (clone) clone.remove();
-        return base; // Skip children if forced to image
+        return base;
     }
 
     if (node.type === 'FRAME' && (node as FrameNode).layoutMode !== 'NONE') {
@@ -241,9 +309,7 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
 
             try {
                 const bytes = await node.exportAsync({ format: 'PNG' });
-                // Store bytes in main thread for CORS-free upload later
                 storedImageBytes[base.imageFileName] = bytes;
-                // Notify UI that we found an image (for progress display only)
                 figma.ui.postMessage({ type: 'image-found', name: base.imageFileName, size: bytes.length });
             } catch (e) {
                 console.error(`Failed to export image for ${node.name}:`, e);
@@ -254,6 +320,7 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
             }
         }
     }
+
     let maxX = 0;
     let maxY = 0;
 
@@ -279,9 +346,8 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
     return base;
 }
 
-// ── Roblox Upload (via local CORS proxy at localhost:3001) ─────────
+// ── Roblox Upload (via Cloudflare proxy) ────────────────────────────
 
-// Simple FNV-1a hash for deduplication
 function hashBytes(bytes: Uint8Array): string {
     let h = 0x811c9dc5;
     for (let i = 0; i < bytes.length; i++) {
@@ -330,22 +396,17 @@ function buildMultipartBody(boundary: string, requestJson: string, fileBytes: Ui
     return body;
 }
 
-// Extract asset ID from various Roblox API response formats
 function extractAssetId(data: any): string | null {
-    // Format 1: { done: true, response: { assetId: "12345" } }
     if (data.done && data.response && data.response.assetId) {
         return `rbxassetid://${data.response.assetId}`;
     }
-    // Format 2: { assetId: "12345" } (direct)
     if (data.assetId) {
         return `rbxassetid://${data.assetId}`;
     }
-    // Format 3: { done: true, response: { path: "assets/12345" } }
     if (data.done && data.response && data.response.path) {
         const match = data.response.path.match(/assets\/(\d+)/);
         if (match) return `rbxassetid://${match[1]}`;
     }
-    // Format 4: { response: { assetId: "12345" } } (no done field)
     if (data.response && data.response.assetId) {
         return `rbxassetid://${data.response.assetId}`;
     }
@@ -390,7 +451,6 @@ async function uploadToRoblox(fileName: string, bytes: Uint8Array, apiKey: strin
         const assetId = extractAssetId(data);
         if (assetId) return assetId;
 
-        // Not done yet — need to poll
         if (data.path && data.path.startsWith('operations/')) {
             return await pollOperation(key, data.path);
         }
@@ -440,50 +500,211 @@ function hydrateSchemaWithAssetIds(node: any, assetMap: { [name: string]: string
 
 // ── Plugin UI & Message Handling ───────────────────────────────────
 
-figma.showUI(__html__, { width: 400, height: 620, themeColors: true });
+figma.showUI(__html__, { width: 1400, height: 900, themeColors: true });
 
 let currentSchema: any = null;
+let currentSectionId: string | null = null;
+let currentSectionNode: SceneNode | null = null;
+let highlightedNodeId: string | null = null;
+let currentHierarchy: any = null;
 
-// Auto-load saved settings when plugin opens
+// Auto-load saved settings
 (async () => {
     const apiKey = await figma.clientStorage.getAsync('robloxApiKey') || '';
     const userId = await figma.clientStorage.getAsync('robloxUserId') || '';
-    figma.ui.postMessage({ type: 'load-settings', apiKey, userId });
+    const robloxUsername = await figma.clientStorage.getAsync('robloxUsername') || '';
+    figma.ui.postMessage({ type: 'load-settings', apiKey, userId, robloxUsername });
 })();
 
-function sendSelection() {
-    const selection = figma.currentPage.selection;
-    let validCount = 0;
-    const validRoots = ['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE', 'SECTION', 'RECTANGLE'];
-    for (const node of selection) {
-        if (validRoots.indexOf(node.type) !== -1) {
-            validCount++;
+// Send workspace sections (top-level frames on current page)
+function sendSections() {
+    const page = figma.currentPage;
+    const sections: { id: string; name: string; width: number; height: number; childCount: number }[] = [];
+
+    for (const child of page.children) {
+        if (child.type === 'FRAME' || child.type === 'COMPONENT' || child.type === 'GROUP') {
+            sections.push({
+                id: child.id,
+                name: child.name,
+                width: 'width' in child ? child.width : 0,
+                height: 'height' in child ? child.height : 0,
+                childCount: 'children' in child ? (child as any).children.length : 0,
+            });
         }
     }
-    figma.ui.postMessage({ type: 'selection-change', selected: selection.length, valid: validCount });
+
+    figma.ui.postMessage({ type: 'sections-list', sections });
 }
+
+// Send selection details + hierarchy
+function sendSelection() {
+    const selection = figma.currentPage.selection;
+
+    if (selection.length === 0) {
+        figma.ui.postMessage({
+            type: 'selection-change',
+            selected: 0,
+            valid: 0,
+            hierarchy: null,
+            selectedNode: null,
+        });
+        return;
+    }
+
+    const validRoots = ['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE', 'SECTION', 'RECTANGLE'];
+    let validCount = 0;
+    for (const node of selection) {
+        if (validRoots.indexOf(node.type) !== -1) validCount++;
+    }
+
+    const firstNode = selection[0];
+    const isSectionRoot = selection.length === 1 && firstNode.id === currentSectionId;
+
+    // If selecting the section root, rebuild hierarchy from it
+    if (isSectionRoot) {
+        currentHierarchy = buildHierarchy(firstNode);
+    } else if (selection.length === 1 && currentSectionNode) {
+        // User selected a child in Figma's canvas — find the section root and rebuild
+        const selNode = selection[0];
+        const absX = 'absoluteTransform' in selNode ? selNode.absoluteTransform[0][2] : 0;
+        const absY = 'absoluteTransform' in selNode ? selNode.absoluteTransform[1][2] : 0;
+        const rootAbsX = 'absoluteTransform' in currentSectionNode ? currentSectionNode.absoluteTransform[0][2] : 0;
+        const rootAbsY = 'absoluteTransform' in currentSectionNode ? currentSectionNode.absoluteTransform[1][2] : 0;
+
+        // If the selected node is inside the current section, rebuild hierarchy from section root
+        if (Math.abs(absX - rootAbsX) < 1 && Math.abs(absY - rootAbsY) < 1) {
+            currentHierarchy = buildHierarchy(currentSectionNode);
+        }
+    }
+
+    // Selected node detail
+    const selectedNode = selection.length === 1 ? {
+        id: firstNode.id,
+        name: firstNode.name,
+        width: 'width' in firstNode ? firstNode.width : 0,
+        height: 'height' in firstNode ? firstNode.height : 0,
+        ...detectRobloxType(firstNode),
+        figmaType: firstNode.type,
+    } : null;
+
+    figma.ui.postMessage({
+        type: 'selection-change',
+        selected: selection.length,
+        valid: validCount,
+        hierarchy: currentHierarchy,
+        selectedNode,
+        highlightedNodeId: selection.length === 1 ? firstNode.id : highlightedNodeId,
+    });
+
+    // Only export preview if this is the section root
+    if (isSectionRoot && firstNode.width <= 3000 && firstNode.height <= 3000) {
+        exportPreview(firstNode);
+    }
+}
+
+async function exportPreview(node: SceneNode) {
+    try {
+        const bytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 0.5 } });
+        const base64 = figma.base64Encode(bytes);
+        figma.ui.postMessage({
+            type: 'preview-image',
+            nodeId: node.id,
+            nodeName: node.name,
+            base64: `data:image/png;base64,${base64}`,
+            sectionWidth: node.width,
+            sectionHeight: node.height,
+        });
+    } catch (e) {
+        // Preview export failed silently
+    }
+}
+
 figma.on("selectionchange", sendSelection);
+figma.on("currentpagechange", sendSections);
+
+// Initial sends
+sendSections();
+sendSelection();
 
 figma.ui.onmessage = async (msg) => {
     if (msg.type === 'save-settings') {
         if (msg.apiKey !== undefined) await figma.clientStorage.setAsync('robloxApiKey', msg.apiKey);
         if (msg.userId !== undefined) await figma.clientStorage.setAsync('robloxUserId', msg.userId);
+        if (msg.robloxUsername !== undefined) await figma.clientStorage.setAsync('robloxUsername', msg.robloxUsername);
         return;
     }
 
     if (msg.type === 'clear-cache') {
         await figma.clientStorage.deleteAsync('uploadCache');
         figma.notify("Upload cache cleared.");
+        figma.ui.postMessage({ type: 'log', message: 'Upload cache cleared.' });
         return;
     }
 
     if (msg.type === 'reset-settings') {
         await figma.clientStorage.deleteAsync('robloxApiKey');
         await figma.clientStorage.deleteAsync('robloxUserId');
+        await figma.clientStorage.deleteAsync('robloxUsername');
         figma.notify("Settings reset.");
+        figma.ui.postMessage({ type: 'log', message: 'Settings reset.' });
         return;
     }
 
+    if (msg.type === 'logout') {
+        await figma.clientStorage.deleteAsync('robloxUserId');
+        await figma.clientStorage.deleteAsync('robloxUsername');
+        figma.ui.postMessage({ type: 'logged-out' });
+        figma.notify("Logged out.");
+        return;
+    }
+
+    // ── Section Selection ─────────────────────────────────────────
+    if (msg.type === 'select-section') {
+        const node = figma.getNodeById(msg.sectionId);
+        if (node && ('children' in node)) {
+            currentSectionId = msg.sectionId;
+            currentSectionNode = node as SceneNode;
+            highlightedNodeId = null;
+            figma.currentPage.selection = [node as SceneNode];
+        }
+        return;
+    }
+
+    // ── Select child node by ID ───────────────────────────────────
+    if (msg.type === 'select-node') {
+        const node = figma.getNodeById(msg.nodeId);
+        if (node) {
+            highlightedNodeId = msg.nodeId;
+            figma.currentPage.selection = [node as SceneNode];
+
+            // Get node position relative to the section root
+            let relX = 0, relY = 0;
+            if ('absoluteTransform' in node) {
+                const absX = node.absoluteTransform[0][2];
+                const absY = node.absoluteTransform[1][2];
+                if (currentSectionNode && 'absoluteTransform' in currentSectionNode) {
+                    const rootX = currentSectionNode.absoluteTransform[0][2];
+                    const rootY = currentSectionNode.absoluteTransform[1][2];
+                    relX = absX - rootX;
+                    relY = absY - rootY;
+                }
+            }
+
+            figma.ui.postMessage({
+                type: 'node-highlighted',
+                nodeId: msg.nodeId,
+                nodeName: node.name,
+                relX,
+                relY,
+                nodeWidth: 'width' in node ? node.width : 0,
+                nodeHeight: 'height' in node ? node.height : 0,
+                hierarchy: currentHierarchy,
+            });
+        }
+        return;
+    }
+
+    // ── Apply tags to selected nodes ──────────────────────────────
     if (msg.type === 'apply-tags') {
         const { tags, applyToDescendants } = msg;
         if (!tags || tags.length === 0) return;
@@ -509,9 +730,80 @@ figma.ui.onmessage = async (msg) => {
             applyToNode(root);
         }
         figma.notify(`Applied tags: ${tagStr}`);
+        figma.ui.postMessage({ type: 'log', message: `Applied tags: ${tagStr}` });
+
+        // Refresh selection to update hierarchy
+        setTimeout(sendSelection, 100);
         return;
     }
 
+    // ── Set node type (single tag shortcut) ───────────────────────
+    if (msg.type === 'set-node-type') {
+        const { nodeId, robloxType } = msg;
+        const node = figma.getNodeById(nodeId);
+        if (!node) return;
+
+        // Remove existing type tags
+        const typeTags = ['#', '_image', '_button', '_button_image', '_scroll', '_ignore', '_vpf', '_canvas', '_abs', '_hover', '_clicked', '_toggled', '_disabled', '_parent', '_scrollx', '_lock'];
+        let cleanName = node.name;
+        for (const t of typeTags) {
+            cleanName = cleanName.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '');
+        }
+        cleanName = cleanName.trim();
+
+        // Map Roblox type to tag
+        const typeToTag: { [key: string]: string } = {
+            'Frame': '',
+            'CanvasGroup': '_canvas',
+            'TextLabel': '',
+            'TextButton': '_button',
+            'TextBox': '',
+            'ImageLabel': '_image',
+            'ImageButton': '_button_image',
+            'ScrollingFrame': '_scroll',
+            'ViewportFrame': '_vpf',
+            'Ignored': '_ignore',
+        };
+
+        const tag = typeToTag[robloxType] || '';
+
+        // Update UI IMMEDIATELY before Figma processes the rename
+        // This makes the type badge and button selection update instantly
+        const typeColorMap: { [key: string]: string } = {
+            'Frame': '#888888', 'CanvasGroup': '#ff9f43', 'TextLabel': '#44cc88',
+            'TextButton': '#4488ff', 'TextBox': '#54a0ff', 'ImageLabel': '#e6a817',
+            'ImageButton': '#4488ff', 'ScrollingFrame': '#aa55cc', 'ViewportFrame': '#cc8833',
+            'Ignored': '#666666'
+        };
+
+        figma.ui.postMessage({
+            type: 'node-type-applied',
+            nodeId,
+            nodeName: cleanName,
+            robloxType,
+            tagColor: typeColorMap[robloxType] || '#888',
+        });
+
+        // Now apply the tag to the Figma node name
+        node.name = cleanName + tag;
+
+        figma.notify(`Set "${cleanName}" → ${robloxType}`);
+        figma.ui.postMessage({ type: 'log', message: `Set "${cleanName}" → ${robloxType}` });
+
+        // Rebuild hierarchy from the section root and SEND IT to the UI
+        if (currentSectionNode) {
+            currentHierarchy = buildHierarchy(currentSectionNode);
+            figma.ui.postMessage({
+                type: 'hierarchy-updated',
+                hierarchy: currentHierarchy,
+                selectedNodeId: nodeId,
+            });
+        }
+
+        return;
+    }
+
+    // ── Reset tags ────────────────────────────────────────────────
     if (msg.type === 'reset-tags') {
         const scope = msg.scope;
         const selection = figma.currentPage.selection;
@@ -525,8 +817,7 @@ figma.ui.onmessage = async (msg) => {
         const resetNode = (node: SceneNode) => {
             let newName = node.name;
             for (const t of knownTags) {
-                // global ignorecase replace
-                newName = newName.replace(new RegExp(t, 'ig'), '');
+                newName = newName.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '');
             }
             node.name = newName.trim();
         };
@@ -534,6 +825,7 @@ figma.ui.onmessage = async (msg) => {
         if (scope === 'selection') {
             for (const root of selection) resetNode(root);
             figma.notify("Reset tags on selection.");
+            figma.ui.postMessage({ type: 'log', message: 'Reset tags on selection.' });
         } else if (scope === 'children') {
             for (const root of selection) {
                 if ('children' in root) {
@@ -542,25 +834,32 @@ figma.ui.onmessage = async (msg) => {
                 }
             }
             figma.notify("Reset tags on children.");
+            figma.ui.postMessage({ type: 'log', message: 'Reset tags on children.' });
         }
+
+        setTimeout(sendSelection, 100);
         return;
     }
 
+    // ── Export ─────────────────────────────────────────────────────
     if (msg.type === 'export') {
         const selection = figma.currentPage.selection;
         if (selection.length !== 1) {
             figma.notify("Please select exactly one node to export.");
+            figma.ui.postMessage({ type: 'log', message: 'Error: Select exactly one node.' });
             return;
         }
 
         const validRoots = ['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE', 'SECTION', 'RECTANGLE'];
         if (validRoots.indexOf(selection[0].type) === -1) {
             figma.notify(`Please select a Frame, Group, Component, or Rectangle. You selected: ${selection[0].type}`);
+            figma.ui.postMessage({ type: 'log', message: `Error: Invalid type ${selection[0].type}` });
             return;
         }
 
         const rootNode = selection[0];
         figma.notify("Exporting...");
+        figma.ui.postMessage({ type: 'log', message: `Exporting "${rootNode.name}"...` });
 
         imageCounter = 0;
         imageList = [];
@@ -594,13 +893,13 @@ figma.ui.onmessage = async (msg) => {
         }
     }
 
+    // ── Start Uploads ─────────────────────────────────────────────
     if (msg.type === 'start-uploads') {
         const { apiKey, userId } = msg;
         const imageNames = Object.keys(storedImageBytes);
         const total = imageNames.length;
         const assetMap: { [name: string]: string } = {};
 
-        // Load existing upload cache
         let uploadCache: { [hash: string]: string } = (await figma.clientStorage.getAsync('uploadCache')) || {};
 
         let skippedCount = 0;
@@ -610,29 +909,30 @@ figma.ui.onmessage = async (msg) => {
             const bytes = storedImageBytes[name];
             const hash = hashBytes(bytes);
 
-            // Check cache first
             if (uploadCache[hash]) {
                 assetMap[name] = uploadCache[hash];
                 skippedCount++;
-                figma.ui.postMessage({ type: 'upload-progress', status: `✓ Cached: ${name} (${i + 1}/${total})` });
+                figma.ui.postMessage({ type: 'upload-progress', status: `Cached: ${name} (${i + 1}/${total})` });
+                figma.ui.postMessage({ type: 'log', message: `Cached: ${name} (${i + 1}/${total})` });
                 continue;
             }
 
             figma.ui.postMessage({ type: 'upload-progress', status: `Uploading: ${name} (${i + 1}/${total})` });
+            figma.ui.postMessage({ type: 'log', message: `Uploading: ${name} (${i + 1}/${total})` });
 
             const assetId = await uploadToRoblox(name, bytes, apiKey, userId);
             if (assetId) {
                 assetMap[name] = assetId;
                 uploadCache[hash] = assetId;
+                figma.ui.postMessage({ type: 'log', message: `Uploaded: ${name} → ${assetId}` });
             } else {
-                figma.ui.postMessage({ type: 'upload-progress', status: `⚠ Failed: ${name}` });
+                figma.ui.postMessage({ type: 'upload-progress', status: `Failed: ${name}` });
+                figma.ui.postMessage({ type: 'log', message: `Failed: ${name}` });
             }
         }
 
-        // Save updated cache
         await figma.clientStorage.setAsync('uploadCache', uploadCache);
 
-        // Hydrate schema with asset IDs
         if (currentSchema) {
             hydrateSchemaWithAssetIds(currentSchema.root, assetMap);
         }
@@ -645,7 +945,17 @@ figma.ui.onmessage = async (msg) => {
             skippedCount: skippedCount
         });
 
-        // Free memory
+        figma.ui.postMessage({
+            type: 'log',
+            message: `Done! ${Object.keys(assetMap).length}/${total} uploaded, ${skippedCount} cached.`
+        });
+
         storedImageBytes = {};
+    }
+
+    // ── Refresh sections ──────────────────────────────────────────
+    if (msg.type === 'refresh-sections') {
+        sendSections();
+        return;
     }
 };
