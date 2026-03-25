@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/exchange", "destination": "/api/exchange.ts" },
+    { "source": "/api/check-auth", "destination": "/api/check-auth.ts" },
+    { "source": "/api/test-connection", "destination": "/api/test-connection.ts" },
+    { "source": "/oauth/callback", "destination": "/api/callback.ts" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

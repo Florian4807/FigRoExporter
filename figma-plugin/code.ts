@@ -10,10 +10,20 @@ interface NodeSchema {
     id: string;
     name: string;
     type: string;
+    // Offset (pixel) values
     x: number;
     y: number;
     width: number;
     height: number;
+    // Scale (relative) values - calculated on export
+    scaleX?: number;
+    scaleY?: number;
+    scaleW?: number;
+    scaleH?: number;
+    // Parent dimensions for scale calculation
+    parentWidth?: number;
+    parentHeight?: number;
+    
     opacity: number;
     visible: boolean;
     rotation: number;
@@ -30,6 +40,8 @@ interface NodeSchema {
     textAlignHorizontal?: string;
     textAlignVertical?: string;
     textColor?: readonly Paint[];
+    textCase?: string;
+    textDecoration?: string;
 
     isImage: boolean;
     imageFileName?: string;
@@ -40,6 +52,9 @@ interface NodeSchema {
     contentWidth?: number;
     contentHeight?: number;
     textScaled?: boolean;
+
+    strokeAlign?: string;
+    strokeJoin?: string;
 
     autoLayout?: {
         direction: string;
@@ -55,6 +70,17 @@ interface NodeSchema {
     primaryAxisSizingMode?: string;
     tags: string[];
     richText?: string;
+    textSegments?: TextSegment[];
+    applyAspectRatio?: boolean;
+}
+
+interface TextSegment {
+    characters: string;
+    color?: { r: number; g: number; b: number; a: number };
+    fontSize?: number;
+    fontWeight?: number;
+    textDecoration?: string;
+    textCase?: string;
 }
 
 let imageCounter = 0;
@@ -134,12 +160,15 @@ function buildHierarchy(node: SceneNode): HierarchyNode {
 
 // ── Node Walking (for export) ───────────────────────────────────────
 
-async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: number = 0): Promise<NodeSchema | null> {
+async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: number = 0, parentW: number = 0, parentH: number = 0, settings: any = {}): Promise<NodeSchema | null> {
     const absX = 'absoluteTransform' in node ? node.absoluteTransform[0][2] : 0;
     const absY = 'absoluteTransform' in node ? node.absoluteTransform[1][2] : 0;
 
     const relX = absX - parentAbsX;
     const relY = absY - parentAbsY;
+    
+    const nodeW = 'width' in node ? node.width : 0;
+    const nodeH = 'height' in node ? node.height : 0;
 
     const isScrolling = node.type === 'FRAME' && (node as FrameNode).clipsContent === true;
     const overflow = node.type === 'FRAME' ? (node as FrameNode).overflowDirection : 'NONE';
@@ -154,14 +183,39 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
     const forceImage = tags.indexOf('image') !== -1;
     const isWhiteout = tags.indexOf('white') !== -1;
 
+    // Also check if node has image fills (detected as ImageLabel in hierarchy)
+    let hasImageFill = false;
+    if ('fills' in node && Array.isArray((node as any).fills)) {
+        const fills = (node as any).fills as ReadonlyArray<Paint>;
+        hasImageFill = fills.some(f => f.type === 'IMAGE' && f.visible !== false);
+    }
+
+    // If node has image fill OR _image tag, force export as flattened image
+    const shouldExportAsImage = forceImage || hasImageFill;
+
+    // Calculate scale values
+    const scaleX = parentW > 0 ? relX / parentW : 0;
+    const scaleY = parentH > 0 ? relY / parentH : 0;
+    const scaleW = parentW > 0 ? nodeW / parentW : 0;
+    const scaleH = parentH > 0 ? nodeH / parentH : 0;
+
     const base: NodeSchema = {
         id: node.id,
         name: node.name,
         type: node.type,
+        // Offset (pixel) values
         x: relX,
         y: relY,
-        width: 'width' in node ? node.width : 0,
-        height: 'height' in node ? node.height : 0,
+        width: nodeW,
+        height: nodeH,
+        // Scale (relative) values
+        scaleX: scaleX,
+        scaleY: scaleY,
+        scaleW: scaleW,
+        scaleH: scaleH,
+        parentWidth: parentW,
+        parentHeight: parentH,
+        
         opacity: 'opacity' in node ? node.opacity : 1,
         visible: 'visible' in node ? node.visible : true,
         rotation: 'rotation' in node ? node.rotation : 0,
@@ -171,9 +225,10 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
         strokeWeight: 'strokeWeight' in node && typeof (node as any).strokeWeight === 'number' ? (node as any).strokeWeight : 0,
         children: [],
         tags: tags,
-        isImage: forceImage,
+        isImage: shouldExportAsImage,
         clipsContent: isScrolling,
         overflowDirection: overflow,
+        applyAspectRatio: settings.applyAspectRatio || false,
     };
 
     if (node.type === 'TEXT') {
@@ -184,24 +239,50 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
         base.textAlignHorizontal = textNode.textAlignHorizontal;
         base.textAlignVertical = textNode.textAlignVertical;
         base.textScaled = true;
+        base.textCase = (textNode as any).textCase !== figma.mixed ? (textNode as any).textCase : undefined;
+        base.textColor = textNode.fills as readonly Paint[];
 
         try {
             const segments = textNode.getStyledTextSegments([
                 'fills',
                 'fontSize',
+                'fontWeight',
                 'fontName',
                 'textDecoration',
                 'textCase'
             ]);
 
+            base.textSegments = [];
             let richText = "";
+            
             for (const segment of segments) {
                 let segmentText = segment.characters;
+                
+                // Apply text case
+                const rawCase = (segment as any).textCase !== figma.mixed ? (segment as any).textCase : 
+                               ((textNode as any).textCase !== figma.mixed ? (textNode as any).textCase : undefined);
+                const segmentCase: string | undefined = typeof rawCase === 'string' ? rawCase : undefined;
+                if (segmentCase === 'UPPER') {
+                    segmentText = segmentText.toUpperCase();
+                } else if (segmentCase === 'LOWER') {
+                    segmentText = segmentText.toLowerCase();
+                } else if (segmentCase === 'TITLE') {
+                    segmentText = segmentText.replace(/\w\S*/g, function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                    });
+                }
+
+                // Escape XML entities
                 segmentText = segmentText.replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;')
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&apos;');
+
+                // Build segment data
+                const segmentData: TextSegment = {
+                    characters: segment.characters,
+                };
 
                 let tagsStr = "";
 
@@ -212,29 +293,61 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
                         const g = Math.round(fill.color.g * 255);
                         const b = Math.round(fill.color.b * 255);
                         tagsStr += ` color="rgb(${r},${g},${b})"`;
+                        segmentData.color = { 
+                            r: fill.color.r, 
+                            g: fill.color.g, 
+                            b: fill.color.b,
+                            a: fill.opacity || 1
+                        };
                     }
                 }
 
                 if (segment.fontSize !== textNode.fontSize) {
                     tagsStr += ` size="${Math.round(segment.fontSize as number)}"`;
+                    segmentData.fontSize = segment.fontSize as number;
+                }
+
+                if (segment.fontWeight) {
+                    segmentData.fontWeight = segment.fontWeight as number;
                 }
 
                 let wrapped = segmentText;
                 if (tagsStr) wrapped = `<font${tagsStr}>${wrapped}</font>`;
-                if (segment.textDecoration === 'UNDERLINE') wrapped = `<u>${wrapped}</u>`;
-                if (segment.textDecoration === 'STRIKETHROUGH') wrapped = `<s>${wrapped}</s>`;
+                
+                if (segment.textDecoration === 'UNDERLINE') {
+                    wrapped = `<u>${wrapped}</u>`;
+                    segmentData.textDecoration = 'UNDERLINE';
+                } else if (segment.textDecoration === 'STRIKETHROUGH') {
+                    wrapped = `<s>${wrapped}</s>`;
+                    segmentData.textDecoration = 'STRIKETHROUGH';
+                }
 
+                if (segmentCase) {
+                    segmentData.textCase = segmentCase;
+                }
+
+                base.textSegments.push(segmentData);
                 richText += wrapped;
             }
-            base.richText = richText;
+            
+            // Only set richText if there are actual style differences
+            if (segments.length > 1) {
+                base.richText = richText;
+            }
         } catch (e) {
             console.error("Rich text error:", e);
             base.richText = textNode.characters;
         }
     }
 
+    // Capture stroke info for non-text nodes
+    if (node.type !== 'TEXT' && 'strokeAlign' in node) {
+        base.strokeAlign = (node as any).strokeAlign;
+        base.strokeJoin = (node as any).strokeJoin;
+    }
+
     // Forced Image / Whiteout Handling
-    if (forceImage || isWhiteout) {
+    if (shouldExportAsImage || isWhiteout) {
         let exportNode = node;
         let clone: SceneNode | null = null;
 
@@ -326,7 +439,7 @@ async function walkNode(node: SceneNode, parentAbsX: number = 0, parentAbsY: num
 
     if ('children' in node) {
         for (const child of (node as any).children) {
-            const childSchema = await walkNode(child, absX, absY);
+            const childSchema = await walkNode(child, absX, absY, nodeW, nodeH, settings);
             if (childSchema) {
                 base.children.push(childSchema);
 
@@ -414,11 +527,11 @@ function extractAssetId(data: any): string | null {
 }
 
 async function uploadToRoblox(fileName: string, bytes: Uint8Array, apiKey: string, userId: string): Promise<string | null> {
-    const key = sanitizeKey(apiKey);
+    const key = apiKey.trim();
     const url = 'https://figro-proxy.florian-10d.workers.dev/assets/v1/assets';
 
     const requestPayload = JSON.stringify({
-        assetType: "Decal",
+        assetType: "Image",
         displayName: fileName.replace('.png', '').substring(0, 50),
         description: "Uploaded via FigmaToRoblox",
         creationContext: {
@@ -429,19 +542,30 @@ async function uploadToRoblox(fileName: string, bytes: Uint8Array, apiKey: strin
     const boundary = '----FigmaToRobloxBoundary' + Date.now();
     const body = buildMultipartBody(boundary, requestPayload, bytes, fileName);
 
+    const headers: Record<string, string> = {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+    };
+
+    // OAuth tokens start with "eyJ", API keys start with "RBX-"
+    if (key.startsWith('eyJ')) {
+        headers['Authorization'] = `Bearer ${key}`;
+        console.log(`[FigmaToRoblox] Using Bearer auth, key prefix: ${key.substring(0, 20)}...`);
+    } else {
+        headers['x-api-key'] = key;
+        console.log(`[FigmaToRoblox] Using x-api-key, key prefix: ${key.substring(0, 20)}...`);
+    }
+
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'x-api-key': key,
-                'Content-Type': `multipart/form-data; boundary=${boundary}`
-            },
+            headers: headers,
             body: body
         });
 
         if (!response.ok) {
             const text = await response.text();
             console.error(`[FigmaToRoblox] Upload failed: ${response.status} ${text}`);
+            figma.ui.postMessage({ type: 'log', message: `Upload failed: ${response.status} - Key starts with: ${key.substring(0, 10)}...`, logType: 'e' });
             return null;
         }
 
@@ -466,10 +590,18 @@ async function uploadToRoblox(fileName: string, bytes: Uint8Array, apiKey: strin
 async function pollOperation(key: string, operationPath: string): Promise<string | null> {
     const url = `https://figro-proxy.florian-10d.workers.dev/assets/v1/${operationPath}`;
     const maxAttempts = 15;
+    
+    const pollHeaders: Record<string, string> = {};
+    if (key.startsWith('eyJ')) {
+        pollHeaders['Authorization'] = `Bearer ${key}`;
+    } else {
+        pollHeaders['x-api-key'] = key;
+    }
+    
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000));
         try {
-            const res = await fetch(url, { headers: { 'x-api-key': key } });
+            const res = await fetch(url, { headers: pollHeaders });
             const data = await res.json();
             console.log(`[FigmaToRoblox] Poll attempt ${attempt}:`, JSON.stringify(data));
             if (data.done) {
@@ -631,6 +763,66 @@ figma.ui.onmessage = async (msg) => {
         if (msg.apiKey !== undefined) await figma.clientStorage.setAsync('robloxApiKey', msg.apiKey);
         if (msg.userId !== undefined) await figma.clientStorage.setAsync('robloxUserId', msg.userId);
         if (msg.robloxUsername !== undefined) await figma.clientStorage.setAsync('robloxUsername', msg.robloxUsername);
+        if (msg.profiles !== undefined) await figma.clientStorage.setAsync('robloxProfiles', msg.profiles);
+        if (msg.activeProfile !== undefined) await figma.clientStorage.setAsync('activeProfile', msg.activeProfile);
+        return;
+    }
+
+    if (msg.type === 'load-profiles') {
+        const profiles = (await figma.clientStorage.getAsync('robloxProfiles')) || {};
+        const activeProfile = (await figma.clientStorage.getAsync('activeProfile')) || null;
+        figma.ui.postMessage({ type: 'profiles-loaded', profiles, activeProfile });
+        return;
+    }
+
+    if (msg.type === 'open-url') {
+        console.log('Opening URL:', msg.url);
+        figma.openExternal(msg.url as string);
+        return;
+    }
+
+    if (msg.type === 'delete-profile') {
+        const profiles = (await figma.clientStorage.getAsync('robloxProfiles')) || {};
+        delete profiles[msg.profileId];
+        await figma.clientStorage.setAsync('robloxProfiles', profiles);
+        const activeProfile = (await figma.clientStorage.getAsync('activeProfile')) || null;
+        figma.ui.postMessage({ type: 'profiles-loaded', profiles, activeProfile });
+        return;
+    }
+
+    if (msg.type === 'test-connection') {
+        const { apiKey, userId } = msg;
+        if (!apiKey || !userId) {
+            figma.ui.postMessage({ type: 'connection-result', success: false, error: 'Missing API key or User ID' });
+            return;
+        }
+
+        try {
+            const headers: Record<string, string> = {};
+            if (apiKey.startsWith('eyJ')) {
+                headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+            } else {
+                headers['x-api-key'] = apiKey.trim();
+            }
+
+            const res = await fetch(`https://figro-proxy.florian-10d.workers.dev/assets/v1/assets?assetType=Image&limit=1`, {
+                method: 'GET',
+                headers,
+            });
+
+            if (res.ok) {
+                figma.ui.postMessage({
+                    type: 'connection-result',
+                    success: true,
+                    userId,
+                });
+            } else {
+                const text = await res.text();
+                figma.ui.postMessage({ type: 'connection-result', success: false, error: `API error: ${res.status} ${text}` });
+            }
+        } catch (err) {
+            figma.ui.postMessage({ type: 'connection-result', success: false, error: 'Connection failed' });
+        }
         return;
     }
 
@@ -743,13 +935,17 @@ figma.ui.onmessage = async (msg) => {
         const node = figma.getNodeById(nodeId);
         if (!node) return;
 
-        // Remove existing type tags
-        const typeTags = ['#', '_image', '_button', '_button_image', '_scroll', '_ignore', '_vpf', '_canvas', '_abs', '_hover', '_clicked', '_toggled', '_disabled', '_parent', '_scrollx', '_lock'];
+        // Remove existing type tags (be more comprehensive)
+        const typeTags = ['_image', '_button', '_button_image', '_scroll', '_ignore', '_vpf', '_canvas', '_abs', '_hover', '_clicked', '_toggled', '_disabled', '_parent', '_scrollx', '_lock'];
         let cleanName = node.name;
-        for (const t of typeTags) {
-            cleanName = cleanName.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '');
-        }
-        cleanName = cleanName.trim();
+        
+        // Remove all type tags at once with a single regex
+        const tagRegex = new RegExp('(_image|_button|_button_image|_scroll|_ignore|_vpf|_canvas|_abs|_hover|_clicked|_toggled|_disabled|_parent|_scrollx|_lock)', 'gi');
+        cleanName = cleanName.replace(tagRegex, '');
+        cleanName = cleanName.replace(/#/g, '').trim();
+
+        // Remove any duplicate underscores
+        cleanName = cleanName.replace(/_+/g, '_').replace(/^_|_$/g, '');
 
         // Map Roblox type to tag
         const typeToTag: { [key: string]: string } = {
@@ -767,30 +963,16 @@ figma.ui.onmessage = async (msg) => {
 
         const tag = typeToTag[robloxType] || '';
 
-        // Update UI IMMEDIATELY before Figma processes the rename
-        // This makes the type badge and button selection update instantly
-        const typeColorMap: { [key: string]: string } = {
-            'Frame': '#888888', 'CanvasGroup': '#ff9f43', 'TextLabel': '#44cc88',
-            'TextButton': '#4488ff', 'TextBox': '#54a0ff', 'ImageLabel': '#e6a817',
-            'ImageButton': '#4488ff', 'ScrollingFrame': '#aa55cc', 'ViewportFrame': '#cc8833',
-            'Ignored': '#666666'
-        };
-
-        figma.ui.postMessage({
-            type: 'node-type-applied',
-            nodeId,
-            nodeName: cleanName,
-            robloxType,
-            tagColor: typeColorMap[robloxType] || '#888',
-        });
-
-        // Now apply the tag to the Figma node name
-        node.name = cleanName + tag;
+        // Apply the tag to the Figma node name
+        node.name = cleanName + (tag ? '_' + tag.replace(/_/g, '') : '');
 
         figma.notify(`Set "${cleanName}" → ${robloxType}`);
         figma.ui.postMessage({ type: 'log', message: `Set "${cleanName}" → ${robloxType}` });
 
-        // Rebuild hierarchy from the section root and SEND IT to the UI
+        // Force Figma to process the name change before rebuilding hierarchy
+        figma.root.children; // Touch the tree
+
+        // Rebuild hierarchy from the section root and send it to the UI
         if (currentSectionNode) {
             currentHierarchy = buildHierarchy(currentSectionNode);
             figma.ui.postMessage({
@@ -844,6 +1026,7 @@ figma.ui.onmessage = async (msg) => {
     // ── Export ─────────────────────────────────────────────────────
     if (msg.type === 'export') {
         const selection = figma.currentPage.selection;
+
         if (selection.length !== 1) {
             figma.notify("Please select exactly one node to export.");
             figma.ui.postMessage({ type: 'log', message: 'Error: Select exactly one node.' });
@@ -865,12 +1048,20 @@ figma.ui.onmessage = async (msg) => {
         imageList = [];
         storedImageBytes = {};
 
-        const rootSchema = await walkNode(rootNode);
+        // Export settings from UI
+        const exportSettings = {
+            positionMode: msg.positionMode || 'scale',
+            applyAspectRatio: msg.applyAspectRatio || false,
+        };
+
+        const rootSchema = await walkNode(rootNode, 0, 0, 0, 0, exportSettings);
 
         currentSchema = {
             figmaVersion: "1.0",
             rootWidth: rootNode.width,
             rootHeight: rootNode.height,
+            positionMode: exportSettings.positionMode,
+            applyAspectRatio: exportSettings.applyAspectRatio,
             imageOrder: imageList.map(img => img.fileName),
             root: rootSchema
         };
@@ -904,31 +1095,38 @@ figma.ui.onmessage = async (msg) => {
 
         let skippedCount = 0;
 
-        for (let i = 0; i < total; i++) {
-            const name = imageNames[i];
-            const bytes = storedImageBytes[name];
-            const hash = hashBytes(bytes);
+        const batchSize = 5;
+        for (let batchStart = 0; batchStart < total; batchStart += batchSize) {
+            const batch = imageNames.slice(batchStart, batchStart + batchSize);
+            
+            const uploadPromises = batch.map(async (name) => {
+                const bytes = storedImageBytes[name];
 
-            if (uploadCache[hash]) {
-                assetMap[name] = uploadCache[hash];
-                skippedCount++;
-                figma.ui.postMessage({ type: 'upload-progress', status: `Cached: ${name} (${i + 1}/${total})` });
-                figma.ui.postMessage({ type: 'log', message: `Cached: ${name} (${i + 1}/${total})` });
-                continue;
-            }
+                // Cache by filename - if same image filename was uploaded before, reuse the asset ID
+                if (uploadCache[name]) {
+                    assetMap[name] = uploadCache[name];
+                    skippedCount++;
+                    figma.ui.postMessage({ type: 'upload-progress', status: `Cached: ${name}` });
+                    figma.ui.postMessage({ type: 'log', message: `Cached: ${name} → ${uploadCache[name]}` });
+                    return null;
+                }
 
-            figma.ui.postMessage({ type: 'upload-progress', status: `Uploading: ${name} (${i + 1}/${total})` });
-            figma.ui.postMessage({ type: 'log', message: `Uploading: ${name} (${i + 1}/${total})` });
+                figma.ui.postMessage({ type: 'upload-progress', status: `Uploading: ${name}` });
+                figma.ui.postMessage({ type: 'log', message: `Uploading: ${name}` });
 
-            const assetId = await uploadToRoblox(name, bytes, apiKey, userId);
-            if (assetId) {
-                assetMap[name] = assetId;
-                uploadCache[hash] = assetId;
-                figma.ui.postMessage({ type: 'log', message: `Uploaded: ${name} → ${assetId}` });
-            } else {
-                figma.ui.postMessage({ type: 'upload-progress', status: `Failed: ${name}` });
-                figma.ui.postMessage({ type: 'log', message: `Failed: ${name}` });
-            }
+                const assetId = await uploadToRoblox(name, bytes, apiKey, userId);
+                if (assetId) {
+                    assetMap[name] = assetId;
+                    uploadCache[name] = assetId;
+                    figma.ui.postMessage({ type: 'log', message: `Uploaded: ${name} → ${assetId}` });
+                } else {
+                    figma.ui.postMessage({ type: 'upload-progress', status: `Failed: ${name}` });
+                    figma.ui.postMessage({ type: 'log', message: `Failed: ${name}` });
+                }
+                return null;
+            });
+
+            await Promise.all(uploadPromises);
         }
 
         await figma.clientStorage.setAsync('uploadCache', uploadCache);
@@ -945,9 +1143,10 @@ figma.ui.onmessage = async (msg) => {
             skippedCount: skippedCount
         });
 
+        console.log('[FigmaToRoblox] Asset map:', JSON.stringify(assetMap));
         figma.ui.postMessage({
             type: 'log',
-            message: `Done! ${Object.keys(assetMap).length}/${total} uploaded, ${skippedCount} cached.`
+            message: `Done! ${Object.keys(assetMap).length}/${total} uploaded, ${skippedCount} cached. Assets: ${JSON.stringify(assetMap)}`
         });
 
         storedImageBytes = {};

@@ -27,7 +27,7 @@ local function loadDecal(item)
             local textureIdStr = string.split(item.Texture, "rbxassetid://")[2]
             if not textureIdStr then return false end
 
-            local data = MarketplaceService:GetProductInfo(
+            local data = MarketplaceService:GetProductInfoAsync(
                 tonumber(textureIdStr),
                 Enum.InfoType.Asset
             )
@@ -89,102 +89,159 @@ local widgetInfo = DockWidgetPluginGuiInfo.new(
     250, 200
 )
 
-local pluginGui = plugin:CreateDockWidgetPluginGui("FigRoImporterGUI", widgetInfo)
+local pluginGui = plugin:CreateDockWidgetPluginGuiAsync("FigRoImporterGUI", widgetInfo)
 pluginGui.Title = "FigRoImporter"
 
-local background = Instance.new("Frame")
-background.Size = UDim2.new(1, 0, 1, 0)
-background.Parent = pluginGui
+-- Main container with ScrollingFrame
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+scrollingFrame.ScrollBarThickness = 4
+scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.Parent = pluginGui
 
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 16)
-padding.PaddingBottom = UDim.new(0, 16)
-padding.PaddingLeft = UDim.new(0, 16)
-padding.PaddingRight = UDim.new(0, 16)
-padding.Parent = background
+local mainContainer = Instance.new("Frame")
+mainContainer.Size = UDim2.new(1, 0, 0, 400) -- Will auto-size based on content
+mainContainer.BackgroundTransparency = 1
+mainContainer.Parent = scrollingFrame
+mainContainer.AutomaticSize = Enum.AutomaticSize.Y
 
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 12)
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Parent = background
+local mainPadding = Instance.new("UIPadding")
+mainPadding.PaddingTop = UDim.new(0, 20)
+mainPadding.PaddingBottom = UDim.new(0, 20)
+mainPadding.PaddingLeft = UDim.new(0, 20)
+mainPadding.PaddingRight = UDim.new(0, 20)
+mainPadding.Parent = mainContainer
 
-local title = Instance.new("TextLabel")
-title.Text = "Paste layout.json here:"
-title.BackgroundTransparency = 1
-title.Size = UDim2.new(1, 0, 0, 24)
-title.Font = Enum.Font.BuilderSansBold
-title.TextSize = 16
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.LayoutOrder = 1
-title.Parent = background
+local mainList = Instance.new("UIListLayout")
+mainList.Padding = UDim.new(0, 16)
+mainList.SortOrder = Enum.SortOrder.LayoutOrder
+mainList.Parent = mainContainer
 
-local inputContainer = Instance.new("Frame")
-inputContainer.BackgroundTransparency = 1
-inputContainer.Size = UDim2.new(1, 0, 1, -84) -- Takes remaining space
-inputContainer.LayoutOrder = 2
-inputContainer.Parent = background
+-- Section 1: Header
+local headerSection = Instance.new("Frame")
+headerSection.BackgroundTransparency = 1
+headerSection.Size = UDim2.new(1, 0, 0, 28)
+headerSection.LayoutOrder = 1
+headerSection.Parent = mainContainer
 
-local inputField = Instance.new("TextBox")
-inputField.Size = UDim2.new(1, 0, 1, 0)
-inputField.Text = ""
-inputField.PlaceholderText = '{"figmaVersion": "1.0", ...}'
-inputField.TextWrapped = true
-inputField.TextXAlignment = Enum.TextXAlignment.Left
-inputField.TextYAlignment = Enum.TextYAlignment.Top
-inputField.ClearTextOnFocus = false
-inputField.Font = Enum.Font.Code
-inputField.TextSize = 12
-inputField.Parent = inputContainer
+local headerLabel = Instance.new("TextLabel")
+headerLabel.Text = "FIGMA UI IMPORTER"
+headerLabel.Size = UDim2.new(1, 0, 0, 20)
+headerLabel.Font = Enum.Font.BuilderSansBold
+headerLabel.TextSize = 11
+headerLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+headerLabel.BackgroundTransparency = 1
+headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+headerLabel.Parent = headerSection
 
-local inputCorner = Instance.new("UICorner")
-inputCorner.CornerRadius = UDim.new(0, 6)
-inputCorner.Parent = inputField
+-- Section 2: JSON Input Label
+local jsonLabel = Instance.new("TextLabel")
+jsonLabel.Text = "Layout JSON"
+jsonLabel.Size = UDim2.new(1, 0, 0, 18)
+jsonLabel.Font = Enum.Font.BuilderSans
+jsonLabel.TextSize = 12
+jsonLabel.BackgroundTransparency = 1
+jsonLabel.TextXAlignment = Enum.TextXAlignment.Left
+jsonLabel.LayoutOrder = 2
+jsonLabel.Parent = mainContainer
 
-local inputPadding = Instance.new("UIPadding")
-inputPadding.PaddingTop = UDim.new(0, 8)
-inputPadding.PaddingBottom = UDim.new(0, 8)
-inputPadding.PaddingLeft = UDim.new(0, 8)
-inputPadding.PaddingRight = UDim.new(0, 8)
-inputPadding.Parent = inputField
+-- Section 3: JSON TextBox
+local jsonContainer = Instance.new("Frame")
+jsonContainer.BackgroundTransparency = 1
+jsonContainer.Size = UDim2.new(1, 0, 0, 180)
+jsonContainer.LayoutOrder = 3
+jsonContainer.Parent = mainContainer
 
-local inputStroke = Instance.new("UIStroke")
-inputStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-inputStroke.Thickness = 1
-inputStroke.Parent = inputField
+local jsonScroll = Instance.new("ScrollingFrame")
+jsonScroll.Size = UDim2.new(1, 0, 1, 0)
+jsonScroll.BackgroundTransparency = 1
+jsonScroll.ScrollBarThickness = 4
+jsonScroll.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+jsonScroll.BorderSizePixel = 0
+jsonScroll.ClipsDescendants = true
+jsonScroll.Parent = jsonContainer
 
+local jsonField = Instance.new("TextBox")
+jsonField.Size = UDim2.new(1, 0, 1, 0)
+jsonField.Position = UDim2.new(0, 0, 0, 0)
+jsonField.Text = ""
+jsonField.PlaceholderText = '{"root": {"name": "Frame", ...}, "rootWidth": 1920, "rootHeight": 1080}'
+jsonField.TextWrapped = true
+jsonField.TextXAlignment = Enum.TextXAlignment.Left
+jsonField.TextYAlignment = Enum.TextYAlignment.Top
+jsonField.ClearTextOnFocus = false
+jsonField.Font = Enum.Font.Code
+jsonField.TextSize = 11
+jsonField.BackgroundTransparency = 1
+jsonField.Parent = jsonScroll
+
+local jsonCorner = Instance.new("UICorner")
+jsonCorner.CornerRadius = UDim.new(0, 6)
+jsonCorner.Parent = jsonScroll
+
+local jsonPadding = Instance.new("UIPadding")
+jsonPadding.PaddingTop = UDim.new(0, 10)
+jsonPadding.PaddingBottom = UDim.new(0, 10)
+jsonPadding.PaddingLeft = UDim.new(0, 10)
+jsonPadding.PaddingRight = UDim.new(0, 10)
+jsonPadding.Parent = jsonField
+
+local jsonStroke = Instance.new("UIStroke")
+jsonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+jsonStroke.Thickness = 1
+jsonStroke.Parent = jsonScroll
+
+-- Section 4: Import Button
 local importButton = Instance.new("TextButton")
-importButton.Size = UDim2.new(1, 0, 0, 40)
+importButton.Size = UDim2.new(1, 0, 0, 44)
 importButton.Text = "Import UI"
 importButton.Font = Enum.Font.BuilderSansExtraBold
-importButton.TextSize = 16
-importButton.LayoutOrder = 3
+importButton.TextSize = 15
+importButton.LayoutOrder = 4
 importButton.AutoButtonColor = true
-importButton.Parent = background
+importButton.Parent = mainContainer
 
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 6)
-btnCorner.Parent = importButton
+local importCorner = Instance.new("UICorner")
+importCorner.CornerRadius = UDim.new(0, 6)
+importCorner.Parent = importButton
 
-local btnStroke = Instance.new("UIStroke")
-btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-btnStroke.Thickness = 1
-btnStroke.Parent = importButton
+local importStroke = Instance.new("UIStroke")
+importStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+importStroke.Thickness = 1
+importStroke.Parent = importButton
 
--- Theme Support Hook
+-- Scroll canvas size
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+
+-- Global position mode (read from JSON schema)
+local positionMode = "scale" -- default
+
+-- Centralized Theme Support
 local function updateTheme()
     local theme = settings().Studio.Theme
-    background.BackgroundColor3 = theme:GetColor(Enum.StudioStyleGuideColor.MainBackground)
     
-    title.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.MainText)
+    -- Main container
+    local bgColor = theme:GetColor(Enum.StudioStyleGuideColor.MainBackground)
+    mainContainer.BackgroundColor3 = bgColor
+    scrollingFrame.BackgroundColor3 = bgColor
     
-    inputField.BackgroundColor3 = theme:GetColor(Enum.StudioStyleGuideColor.InputFieldBackground)
-    inputField.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.MainText)
-    inputField.PlaceholderColor3 = theme:GetColor(Enum.StudioStyleGuideColor.DimmedText)
-    inputStroke.Color = theme:GetColor(Enum.StudioStyleGuideColor.Border)
+    -- Header
+    headerLabel.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.DimmedText)
     
+    -- Labels
+    jsonLabel.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.MainText)
+    
+    -- JSON Input
+    jsonField.BackgroundColor3 = theme:GetColor(Enum.StudioStyleGuideColor.InputFieldBackground)
+    jsonField.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.MainText)
+    jsonField.PlaceholderColor3 = theme:GetColor(Enum.StudioStyleGuideColor.DimmedText)
+    jsonStroke.Color = theme:GetColor(Enum.StudioStyleGuideColor.Border)
+    
+    -- Import Button - Primary Action
     importButton.BackgroundColor3 = theme:GetColor(Enum.StudioStyleGuideColor.DialogButton)
     importButton.TextColor3 = theme:GetColor(Enum.StudioStyleGuideColor.DialogButtonText)
-    btnStroke.Color = theme:GetColor(Enum.StudioStyleGuideColor.Border)
+    importStroke.Color = theme:GetColor(Enum.StudioStyleGuideColor.Border)
 end
 
 updateTheme()
@@ -200,13 +257,37 @@ end)
 --------------------------------------------------------------------------------
 
 local function toUDim2Size(node, parentW, parentH)
-    if parentW == 0 or parentH == 0 then return UDim2.new(0, node.width, 0, node.height) end
-    return UDim2.new(node.width / parentW, 0, node.height / parentH, 0)
+    if positionMode == "scale" then
+        -- Use scale values from schema
+        if node.scaleW and node.scaleH then
+            return UDim2.new(node.scaleW, 0, node.scaleH, 0)
+        end
+        -- Fallback: calculate scale
+        if parentW == 0 or parentH == 0 then 
+            return UDim2.new(0, node.width or 0, 0, node.height or 0) 
+        end
+        return UDim2.new((node.width or 0) / parentW, 0, (node.height or 0) / parentH, 0)
+    else
+        -- Offset mode: use exact pixel values
+        return UDim2.new(0, node.width or 0, 0, node.height or 0)
+    end
 end
 
 local function toUDim2Position(node, parentW, parentH)
-    if parentW == 0 or parentH == 0 then return UDim2.new(0, node.x, 0, node.y) end
-    return UDim2.new(node.x / parentW, 0, node.y / parentH, 0)
+    if positionMode == "scale" then
+        -- Use scale values from schema
+        if node.scaleX and node.scaleY then
+            return UDim2.new(node.scaleX, 0, node.scaleY, 0)
+        end
+        -- Fallback: calculate scale
+        if parentW == 0 or parentH == 0 then 
+            return UDim2.new(0, node.x or 0, 0, node.y or 0) 
+        end
+        return UDim2.new((node.x or 0) / parentW, 0, (node.y or 0) / parentH, 0)
+    else
+        -- Offset mode: use exact pixel values
+        return UDim2.new(0, node.x or 0, 0, node.y or 0)
+    end
 end
 
 local function figmaColorToColor3(fill)
@@ -266,10 +347,60 @@ local FONT_IDS = {
     Raleway = 11702779240,
     RobotoSlab = 12187368625,
     Rubik = 12187365977,
+    RubikMarkerHatch = 12187367066,
     Silkscreen = 12187371840,
     Sono = 12187374537,
+    SonoMonospace = 12187362578,
     Teko = 12187376174,
     WorkSans = 12187373327,
+    
+    -- Additional fonts from reference project
+    Damion = 12187607722,
+    NotoSerifSC = 12187376739,
+    Tangerine = 12187376545,
+    Prompt = 12187607287,
+    Tajawal = 12187377588,
+    Rajdhani = 12187375422,
+    Kings = 12187371622,
+    RubikBurned = 12187363148,
+    NotoSerifHK = 12187366846,
+    RubikMaze = 12187366475,
+    IBMPlexSansJP = 12187364147,
+    Monofett = 12187606783,
+    UnicaOne = 12187364842,
+    NotoSerifJP = 12187369639,
+    Parisienne = 12187361943,
+    SedgwickAveDisplay = 12187376357,
+    FingerPaint = 12187375716,
+    Eater = 12187372382,
+    CaesarDressing = 12187368843,
+    RubikIso = 12187362120,
+    PT_Serif = 12187606624,
+    Italianno = 12187374273,
+    ShadowsIntoLight = 12187607493,
+    Codystar = 12187363887,
+    NotoSerifTC = 12187368093,
+    Yellowtail = 12187373881,
+    Nosifer = 12187377325,
+    LaBelleAurore = 12187607116,
+    Marhey = 12187364648,
+    Frijole = 12187375194,
+    GreatVibes = 12187375958,
+    MPLUSRounded1c = 12188570269,
+    BuilderExtended = 16658237174,
+    Monoton = 12187374098,
+    BuilderMono = 16658246179,
+    Rye = 12187372175,
+    IrishGrover = 12187376910,
+    NothingYouCouldDo = 12187367901,
+    FasterOne = 12187370928,
+    RubikWetPaint = 12187369046,
+    NotoSansHK = 12187362892,
+    PTSans = 12187606934,
+    BuilderSans = 16658221428,
+    Arimo = 16658254058,
+    FredokaOne = 12187366162,
+    Fredoka = 12187375553,
 }
 
 -- Weight name → Roblox FontWeight
@@ -307,32 +438,84 @@ end
 
 local function mapFont(fontName)
     if not fontName or not fontName.family then
-        return Font.fromEnum(Enum.Font.GothamMedium)
+        return Font.fromEnum(Enum.Font.BuilderSans)
     end
 
-    local key = normalizeFontName(fontName.family)
+    local family = fontName.family
     local style = fontName.style or ""
     local weight = getWeight(style)
     local fontStyle = getStyle(style)
 
-    local fontId = FONT_IDS[key]
-    if fontId then
-        return Font.fromId(fontId, weight, fontStyle)
+    -- Built-in Roblox fonts that should use Enum (not asset IDs)
+    local builtInFonts = {
+        ["Fredoka One"] = Enum.Font.FredokaOne,
+        ["Fredoka"] = Enum.Font.FredokaOne,
+        ["Gotham"] = Enum.Font.Gotham,
+        ["GothamMedium"] = Enum.Font.GothamMedium,
+        ["GothamBold"] = Enum.Font.GothamBold,
+        ["GothamBlack"] = Enum.Font.GothamBlack,
+        ["SourceSans"] = Enum.Font.SourceSans,
+        ["SourceSansBold"] = Enum.Font.SourceSansBold,
+        ["SourceSansItalic"] = Enum.Font.SourceSansItalic,
+        ["SourceSansLight"] = Enum.Font.SourceSansLight,
+        ["SourceSansSemibold"] = Enum.Font.SourceSansSemibold,
+        ["BuilderSans"] = Enum.Font.BuilderSans,
+        ["BuilderSansBold"] = Enum.Font.BuilderSansBold,
+        ["BuilderSansMedium"] = Enum.Font.BuilderSansMedium,
+        ["BuilderSansExtraBold"] = Enum.Font.BuilderSansExtraBold,
+        ["Roboto"] = Enum.Font.Roboto,
+        ["RobotoCondensed"] = Enum.Font.RobotoCondensed,
+        ["RobotoMono"] = Enum.Font.RobotoMono,
+    }
+    
+    if builtInFonts[family] then
+        return Font.fromEnum(builtInFonts[family])
     end
 
-    -- Fallback to named fonts Roblox knows about
+    -- Try marketplace font ID
+    local key = normalizeFontName(family)
+    local fontId = FONT_IDS[key]
+    
+    if fontId then
+        local success, result = pcall(function()
+            return Font.fromId(fontId, weight, fontStyle)
+        end)
+        if success then return result end
+    end
+
+    -- Fallback: Try loading by Name
     local ok, result = pcall(function()
-        return Font.fromName(fontName.family, weight, fontStyle)
+        return Font.fromName(family, weight, fontStyle)
     end)
     if ok then return result end
 
     -- Final fallback
-    return Font.fromEnum(Enum.Font.GothamMedium)
+    return Font.fromEnum(Enum.Font.BuilderSans)
 end
 
 --------------------------------------------------------------------------------
 -- Builder
 --------------------------------------------------------------------------------
+
+local function getGradientRotation(gradientTransform)
+    -- Calculate rotation from Figma's gradient transform matrix
+    -- Figma gradientTransform is a 2x3 matrix [[a, b, tx], [c, d, ty]]
+    -- Reference project uses: atan2(transform[0][0], transform[0][1]) and then -(angle - 90)
+    if not gradientTransform or not gradientTransform[1] then return 0 end
+    
+    local a = gradientTransform[1][1] or 0
+    local b = gradientTransform[1][2] or 0
+    
+    -- Match reference project: atan2(a, b), then -(angle - 90)
+    local angle = math.atan2(a, b) * 180 / math.pi
+    local rotation = -(angle - 90)
+    
+    -- Normalize to 0-360
+    while rotation < 0 do rotation = rotation + 360 end
+    while rotation >= 360 do rotation = rotation - 360 end
+    
+    return rotation
+end
 
 local function applyGradient(fill, parent)
     if not fill or not fill.gradientStops then return end
@@ -365,6 +548,11 @@ local function applyGradient(fill, parent)
         pcall(function() gradient.Transparency = NumberSequence.new(transSeq) end)
     end
     
+    -- Apply rotation from gradient transform
+    if fill.gradientTransform then
+        gradient.Rotation = getGradientRotation(fill.gradientTransform)
+    end
+    
     gradient.Parent = parent
     return gradient
 end
@@ -387,21 +575,50 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
     
     if node.type == "TEXT" then
         obj = Instance.new(isButton and "TextButton" or "TextLabel")
+        
+        -- Handle rich text with segments
         if node.richText then
             obj.RichText = true
             obj.Text = node.richText
         else
             obj.Text = node.characters or ""
         end
+        
         obj.TextSize = node.fontSize or 14
         obj.TextScaled = node.textScaled == true
         
+        -- Set text color from fills
         local textColorFill = node.textColor and node.textColor[1]
         if textColorFill then
-            obj.TextColor3 = figmaColorToColor3(textColorFill)
-            obj.TextTransparency = 1 - ((textColorFill.opacity or 1) * baseOpacity)
+            if textColorFill.type == "SOLID" and textColorFill.color then
+                obj.TextColor3 = Color3.new(textColorFill.color.r, textColorFill.color.g, textColorFill.color.b)
+                obj.TextTransparency = 1 - ((textColorFill.opacity or 1) * baseOpacity)
+            elseif textColorFill.type == "GRADIENT_LINEAR" and textColorFill.gradientStops then
+                -- Use first gradient stop color for text
+                local firstStop = textColorFill.gradientStops[1]
+                if firstStop and firstStop.color then
+                    obj.TextColor3 = Color3.new(firstStop.color.r, firstStop.color.g, firstStop.color.b)
+                    obj.TextTransparency = 1 - ((firstStop.color.a or 1) * baseOpacity)
+                end
+                -- Apply gradient to text
+                applyGradient(textColorFill, obj)
+            end
         else
             obj.TextColor3 = Color3.new(0, 0, 0)
+        end
+        
+        -- Apply text case
+        if node.textCase then
+            if node.textCase == "UPPER" then
+                obj.Text = string.upper(obj.Text)
+            elseif node.textCase == "LOWER" then
+                obj.Text = string.lower(obj.Text)
+            elseif node.textCase == "TITLE" then
+                -- Title case: capitalize first letter of each word
+                obj.Text = string.gsub(obj.Text, "(%w)(%w*)", function(first, rest)
+                    return string.upper(first) .. string.lower(rest)
+                end)
+            end
         end
         
         obj.BackgroundTransparency = 1
@@ -409,32 +626,33 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
         obj.TextXAlignment = xAlign
         obj.TextYAlignment = yAlign
         obj.FontFace = mapFont(node.fontName)
+        
+        -- TextWrapped should be true for proper text display
+        obj.TextWrapped = true
 
     elseif node.isImage then
         obj = Instance.new(isButton and "ImageButton" or "ImageLabel")
+        
+        -- Debug: show what we're getting
+        print("[FigRoImporter] Image node: " .. tostring(node.name) .. ", assetId: " .. tostring(node.assetId) .. ", imageFileName: " .. tostring(node.imageFileName))
         
         -- Default to the mapped pool ID
         local textureId = pool[node.assetId] 
 
         if not textureId and node.assetId and node.assetId ~= "" then
             -- Fallback: The JSON has a direct rbxassetid (Open Cloud workflow)
-            -- Open Cloud uploads Decals (Type 13), but ImageLabels need Images (Type 1).
+            -- Open Cloud uploads Decals (Type 13), which can be used directly as rbxassetid://
             local idStr = string.match(node.assetId, "%d+")
             if idStr then
-                local success, assetModel = pcall(function()
-                    return game:GetService("InsertService"):LoadAsset(tonumber(idStr))
-                end)
-                
-                if success and assetModel then
-                    local decal = assetModel:FindFirstChildOfClass("Decal")
-                    if decal and decal.Texture then
-                        textureId = decal.Texture
-                    end
-                    assetModel:Destroy()
+                -- Use the asset ID directly as rbxassetid
+                textureId = "rbxassetid://" .. idStr
+                print("[FigRoImporter] Using asset ID directly: " .. textureId)
+            else
+                -- Try as direct rbxassetid URL
+                if string.find(node.assetId, "rbxassetid://") then
+                    textureId = node.assetId
                 end
             end
-            
-            if not textureId then textureId = node.assetId end
         end
 
         obj.Image = textureId or ""
@@ -442,8 +660,9 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
         if node.assetId and pool[node.assetId] then
             obj:SetAttribute("Id", node.assetId)
         end
+        -- Force images to have clear background, prioritize image content
         obj.BackgroundTransparency = 1
-        obj.ImageTransparency = 1 - baseOpacity
+        obj.ImageTransparency = 1 - (baseOpacity or 1)
         obj.ScaleType = Enum.ScaleType.Fit
     
     elseif node.type == "ELLIPSE" then
@@ -484,6 +703,7 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
     if obj:IsA("Frame") or obj:IsA("ImageLabel") or obj:IsA("ScrollingFrame") or obj:IsA("GuiButton") then
         local fill = node.fills and node.fills[1]
         
+        -- Images always have transparent background to prioritize image content
         if node.isImage then
             obj.BackgroundTransparency = 1
         elseif fill then
@@ -506,8 +726,36 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
     local stroke = node.strokes and node.strokes[1]
     if stroke and node.strokeWeight > 0 then
         local uiStroke = Instance.new("UIStroke")
-        uiStroke.Thickness = node.strokeWeight
-        uiStroke.Transparency = 1 - (stroke.opacity or 1)
+        uiStroke.Transparency = 1 - ((stroke.opacity or 1) * baseOpacity)
+        
+        -- Use ScaledSize so strokes scale with the element
+        uiStroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
+        
+        -- Convert pixel thickness to scaled fraction (0-1 range)
+        -- Use node's smaller dimension as reference, or font size for text
+        local refSize = math.min(node.width or 100, node.height or 100)
+        if node.type == "TEXT" and node.fontSize then
+            refSize = node.fontSize
+        end
+        if refSize > 0 then
+            uiStroke.Thickness = node.strokeWeight / refSize
+        else
+            uiStroke.Thickness = node.strokeWeight / 100
+        end
+        
+        -- Apply stroke mode: Contextual for TextLabels, Border for others
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+        else
+            uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        end
+        
+        -- Apply line join mode: Miter by default, Round if has corner radius
+        if node.cornerRadius and node.cornerRadius > 0 then
+            uiStroke.LineJoinMode = Enum.LineJoinMode.Round
+        else
+            uiStroke.LineJoinMode = Enum.LineJoinMode.Miter
+        end
         
         if stroke.type == "SOLID" then
             uiStroke.Color = figmaColorToColor3(stroke)
@@ -520,10 +768,16 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
         if obj:IsA("GuiObject") then obj.BorderSizePixel = 0 end
     end
 
-    -- Corner radius
+    -- Corner radius (use Scale so it scales with the element)
     if node.cornerRadius and node.cornerRadius > 0 and node.type ~= "ELLIPSE" then
         local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, node.cornerRadius)
+        -- Convert pixel radius to scale fraction: radius / min(width, height)
+        local minDim = math.min(node.width or 100, node.height or 100)
+        if minDim > 0 then
+            corner.CornerRadius = UDim.new(node.cornerRadius / minDim, 0)
+        else
+            corner.CornerRadius = UDim.new(0, node.cornerRadius)
+        end
         corner.Parent = obj
     end
     
@@ -562,6 +816,22 @@ local function buildUI(node, parentInstance, parentW, parentH, childIndex)
             list.Parent = obj
         end
     end
+    
+    -- Apply AspectRatioConstraint (from reference project)
+    -- Skip for ScrollingFrame and if explicitly disabled
+    if node.applyAspectRatio and not obj:IsA("ScrollingFrame") then
+        local nodeW = node.width or 0
+        local nodeH = node.height or 0
+        if nodeW > 0 and nodeH > 0 then
+            local aspectRatio = nodeW / nodeH
+            local arc = Instance.new("UIAspectRatioConstraint")
+            arc.AspectRatio = aspectRatio
+            arc.AspectType = Enum.AspectType.FitWithinMaxSize
+            -- DominantAxis: Width if wider, Height if taller
+            arc.DominantAxis = nodeW > nodeH and Enum.DominantAxis.Width or Enum.DominantAxis.Height
+            arc.Parent = obj
+        end
+    end
 
     obj.Parent = parentInstance
 
@@ -582,14 +852,22 @@ end
 importButton.MouseButton1Click:Connect(function()
     scanLoadedDecals() -- refresh pool in case studio reloaded scripts
 
-    local jsonString = inputField.Text
+    local jsonString = jsonField.Text
     if jsonString == "" then
         warn("Please paste layout.json contents into the text field.")
         return
     end
 
+    -- Clean up JSON - remove BOM or leading/trailing whitespace
+    jsonString = string.match(jsonString, "^%s*(.-)%s*$")
+    local firstByte = string.byte(jsonString, 1)
+    if firstByte == 0xFEFF then
+        jsonString = string.sub(jsonString, 2)
+    end
+
     -- Debug: show JSON length
     print("[FigRoImporter] JSON length: " .. #jsonString .. " characters")
+    print("[FigRoImporter] JSON preview: " .. string.sub(jsonString, 1, 200))
 
     local success, parsedData = pcall(function()
         return HttpService:JSONDecode(jsonString)
@@ -603,6 +881,23 @@ importButton.MouseButton1Click:Connect(function()
     local rootNode = parsedData.root
     local rootWidth = parsedData.rootWidth or rootNode.width
     local rootHeight = parsedData.rootHeight or rootNode.height
+    
+    -- Read settings from JSON
+    positionMode = parsedData.positionMode or "scale"
+    local applyAspectRatio = parsedData.applyAspectRatio or false
+    
+    -- Apply applyAspectRatio to all nodes recursively
+    if applyAspectRatio then
+        local function setAspectRatio(node)
+            node.applyAspectRatio = true
+            if node.children then
+                for _, child in ipairs(node.children) do
+                    setAspectRatio(child)
+                end
+            end
+        end
+        setAspectRatio(rootNode)
+    end
 
     -- Debug: count images and check for assetIds
     local imageCount = 0
@@ -626,7 +921,7 @@ importButton.MouseButton1Click:Connect(function()
     countImages(rootNode)
     print("[FigRoImporter] Found " .. imageCount .. " images, " .. hasAssetId .. " with asset IDs")
 
-    print("[FigRoImporter] Importing " .. rootNode.name .. " (" .. rootWidth .. "x" .. rootHeight .. ")")
+    print("[FigRoImporter] Importing " .. rootNode.name .. " (" .. rootWidth .. "x" .. rootHeight .. ") mode: " .. positionMode)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = rootNode.name
@@ -637,19 +932,25 @@ importButton.MouseButton1Click:Connect(function()
     -- Recursively build UI
     local rootFrame = buildUI(rootNode, screenGui, rootWidth, rootHeight, nil)
     
-    -- Center the root frame properly
+    -- Root frame always fills the screen (1920x1080 canvas from Figma)
     rootFrame.Size = UDim2.new(1, 0, 1, 0)
-    rootFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    rootFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    rootFrame.Position = UDim2.new(0, 0, 0, 0)
     rootFrame.BackgroundTransparency = 1
     
-    -- UIAspectRatioConstraint on the root node
+    -- Remove stroke from the root frame if present
+    local stroke = rootFrame:FindFirstChildWhichIsA("UIStroke")
+    if stroke then
+        stroke:Destroy()
+    end
+    
+    -- Add AspectRatioConstraint to root frame for cross-device scaling
+    -- 1920/1080 = 1.7777...
     local arc = Instance.new("UIAspectRatioConstraint")
     arc.AspectRatio = rootWidth / rootHeight
     arc.AspectType = Enum.AspectType.FitWithinMaxSize
     arc.DominantAxis = Enum.DominantAxis.Width
     arc.Parent = rootFrame
-
+    
     screenGui.Parent = StarterGui
 
     print("[FigRoImporter] UI Import Complete! ScreenGui placed in StarterGui.")

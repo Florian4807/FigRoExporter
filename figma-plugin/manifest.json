@@ -10,8 +10,10 @@
     "networkAccess": {
         "allowedDomains": [
             "https://apis.roblox.com",
+            "https://users.roblox.com",
             "https://cdnjs.cloudflare.com",
-            "https://figro-proxy.florian-10d.workers.dev"
+            "https://figro-proxy.florian-10d.workers.dev",
+            "https://figroexporter-tawny.vercel.app"
         ],
         "devAllowedDomains": [
             "http://localhost:3001"

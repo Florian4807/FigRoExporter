@@ -148,6 +148,114 @@
         .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
         .modal p { color: var(--text-dim); font-size: 12px; text-align: center; line-height: 1.5; }
 
+        /* Login Modal Tabs */
+        .login-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .login-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+
+        .login-tab:hover { background: var(--panel2); color: var(--text); }
+        .login-tab.active { background: var(--accent); color: white; }
+
+        .login-tab-content { display: none; flex-direction: column; gap: 12px; }
+        .login-tab-content.active { display: flex; }
+
+        .login-desc { font-size: 11px !important; margin-bottom: 8px !important; }
+
+        .login-actions { display: flex; gap: 8px; }
+        .login-actions .btn { flex: 1; text-align: center; }
+
+        .login-status {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .login-status.success { background: rgba(0,214,143,0.15); color: var(--green); }
+        .login-status.error { background: rgba(255,107,107,0.15); color: var(--red); }
+        .login-status.testing { background: rgba(84,160,255,0.15); color: var(--blue); }
+
+        .profiles-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .profile-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .profile-item:hover { border-color: var(--accent); }
+        .profile-item.active { border-color: var(--accent); background: var(--accent-dim); }
+
+        .profile-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--panel3);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .profile-info { flex: 1; min-width: 0; }
+        .profile-name { font-weight: 600; font-size: 13px; }
+        .profile-userid { font-size: 11px; color: var(--text-muted); }
+
+        .profile-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 14px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .profile-delete:hover { background: rgba(255,107,107,0.2); color: var(--red); }
+
+        .help-content ol {
+            padding-left: 20px;
+            color: var(--text-dim);
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        .help-content strong { color: var(--text); }
+        .help-note {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         .input-group { display: flex; flex-direction: column; gap: 6px; }
         .input-group label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
         .input-group input {
@@ -161,6 +269,35 @@
             transition: border-color 0.15s;
         }
         .input-group input:focus { border-color: var(--accent); }
+
+        .mode-selector {
+            display: flex;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .mode-btn:hover {
+            background: var(--panel3);
+            color: var(--text);
+        }
+
+        .mode-btn.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
 
         .btn {
             background: var(--panel2);
@@ -684,7 +821,7 @@
         </div>
         <div class="topbar-right">
             <div class="profile-area" id="profileArea">
-                <div class="avatar"><span id="avatarInitial">?</span></div>
+                <div class="avatar"><span id="avatarInitial">?</span><img id="avatarImg" style="display:none;" /></div>
                 <span class="username placeholder" id="topbarUsername">Login</span>
             </div>
             <button class="logout-btn" id="logoutBtn" style="display:none;">Logout</button>
@@ -697,23 +834,84 @@
 
     <!-- LOGIN OVERLAY -->
     <div class="overlay" id="loginOverlay">
-        <div class="modal">
-            <h2>Connect Roblox</h2>
-            <p>Login with your Roblox account to upload images directly to Roblox.</p>
-            <div class="input-group">
-                <label>User ID</label>
-                <input type="text" id="loginUserId" placeholder="e.g. 352298720" />
+        <div class="modal login-modal">
+            <div class="login-tabs">
+                <div class="login-tab active" data-tab="connect">Connect</div>
+                <div class="login-tab" data-tab="profiles">Profiles</div>
+                <div class="login-tab" data-tab="help">Help</div>
             </div>
-            <div class="input-group">
-                <label>API Key</label>
-                <input type="password" id="loginApiKey" placeholder="x-api-key from Roblox Developer Hub" />
+
+            <!-- Connect Tab -->
+            <div class="login-tab-content active" id="tabConnect">
+                <h2>Connect Roblox</h2>
+                <p class="login-desc">Connect via OAuth 2.0 (recommended) to upload images to your Roblox account.</p>
+
+                <button class="btn primary" id="oauthLoginBtn" style="width:100%; margin-bottom:16px;">Login with Roblox</button>
+
+                <div id="apiKeySection" style="margin-top:16px;">
+                    <div style="cursor:pointer; color:var(--text-muted); font-size:11px; text-align:center; margin-bottom:8px;" onclick="document.getElementById('apiKeyDetails').style.display = document.getElementById('apiKeyDetails').style.display === 'none' ? 'block' : 'none';">
+                        ▼ Or use API key instead (backup option)
+                    </div>
+                    <div id="apiKeyDetails" style="display:none;">
+                        <div class="input-group">
+                            <label>Profile Name</label>
+                            <input type="text" id="profileName" placeholder="e.g. Main Account" />
+                        </div>
+                        <div class="input-group">
+                            <label>User ID</label>
+                            <input type="text" id="loginUserId" placeholder="e.g. 352298720" />
+                        </div>
+                        <div class="input-group">
+                            <label>API Key</label>
+                            <input type="password" id="loginApiKey" placeholder="x-api-key from Roblox Developer Hub" />
+                        </div>
+
+                        <div class="login-actions">
+                            <button class="btn" id="testConnBtn">Test Connection</button>
+                            <button class="btn primary" id="loginBtn" style="flex:1;">Save & Connect</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="login-status" id="loginStatus" style="display:none;"></div>
+
+                <!-- OAuth Code Input (hidden by default) -->
+                <div id="oauthCodeGroup" style="display:none; margin-top:12px;">
+                    <div class="input-group">
+                        <label>Authorization Code</label>
+                        <input type="text" id="oauthCodeInput" placeholder="Paste code from browser" />
+                    </div>
+                    <button class="btn success" id="exchangeCodeBtn" style="width:100%; margin-top:8px;">Exchange for Token</button>
+                </div>
             </div>
-            <div class="input-group">
-                <label>Username (optional)</label>
-                <input type="text" id="loginUsername" placeholder="Your Roblox username" />
+
+            <!-- Profiles Tab -->
+            <div class="login-tab-content" id="tabProfiles">
+                <h2>Saved Profiles</h2>
+                <p class="login-desc">Switch between saved accounts quickly.</p>
+
+                <div class="profiles-list" id="profilesList">
+                    <div class="no-select-msg">No saved profiles</div>
+                </div>
             </div>
-            <button class="btn primary" id="loginBtn" style="text-align:center;">Connect Account</button>
-            <button class="btn" id="loginCancelBtn" style="text-align:center;">Cancel</button>
+
+            <!-- Help Tab -->
+            <div class="login-tab-content" id="tabHelp">
+                <h2>How to Get API Key</h2>
+                <div class="help-content">
+                    <ol>
+                        <li>Go to <strong>Roblox Developer Hub</strong></li>
+                        <li>Navigate to <strong>Open Cloud</strong> → <strong>API Keys</strong></li>
+                        <li>Click <strong>Create API Key</strong></li>
+                        <li>Give it a name (e.g., "FigRoExporter")</li>
+                        <li>Under <strong>Assets</strong>, grant read/write permissions</li>
+                        <li>Copy the generated key</li>
+                    </ol>
+                    <p class="help-note">Your key is stored locally in Figma and never shared.</p>
+                </div>
+            </div>
+
+            <button class="btn" id="loginCancelBtn" style="margin-top:16px; width:100%;">Close</button>
         </div>
     </div>
 
@@ -728,6 +926,27 @@
             <div class="input-group">
                 <label>User ID</label>
                 <input type="text" id="userIdInput" placeholder="e.g. 352298720" />
+            </div>
+            <div class="input-group">
+                <label>Position Mode</label>
+                <div class="mode-selector" id="positionModeSelector">
+                    <button class="mode-btn active" data-mode="scale">Scale</button>
+                    <button class="mode-btn" data-mode="offset">Offset</button>
+                </div>
+                <small style="color: var(--text-muted); margin-top: 4px; display: block;">
+                    Scale: Responsive positions relative to parent size<br>
+                    Offset: Exact pixel positions from Figma
+                </small>
+            </div>
+            <div class="input-group">
+                <label>Apply AspectRatioConstraint</label>
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="aspectRatioOff" data-value="false">Off</button>
+                    <button class="mode-btn" id="aspectRatioOn" data-value="true">On</button>
+                </div>
+                <small style="color: var(--text-muted); margin-top: 4px; display: block;">
+                    Adds UIAspectRatioConstraint to preserve proportions when resizing
+                </small>
             </div>
             <div class="btn danger" id="clearCacheBtn" style="text-align:center;">Clear Upload Cache</div>
             <div class="btn" id="resetSettingsBtn" style="text-align:center;">Reset All</div>
@@ -856,6 +1075,7 @@
                     <div class="img-btns">
                         <button class="btn" id="zipBtn">Download ZIP</button>
                         <button class="btn success" id="uploadBtn">Upload to Roblox</button>
+                        <button class="btn primary" id="copyJsonBtn" disabled>Copy JSON</button>
                     </div>
                 </div>
             </div>
@@ -879,7 +1099,11 @@
         let exportImages = {};
         let currentSchema = null;
         let apiKey = '', userId = '', robloxUsername = '';
+        let profiles = {};
+        let activeProfile = null;
         let sectionWidth = 0, sectionHeight = 0;
+        let positionMode = 'scale'; // 'scale' or 'offset'
+        let applyAspectRatio = false;
 
         // ── Console ────────────────────────────────────────────
         const consoleEl = document.getElementById('console');
@@ -900,6 +1124,7 @@
         // ── Profile / Login ────────────────────────────────────
         function updateProfileUI() {
             const init = document.getElementById('avatarInitial');
+            const avatarImg = document.getElementById('avatarImg');
             const username = document.getElementById('topbarUsername');
             const logoutBtn = document.getElementById('logoutBtn');
 
@@ -908,31 +1133,283 @@
                 username.textContent = robloxUsername;
                 username.classList.remove('placeholder');
                 logoutBtn.style.display = 'block';
+                // Try to show avatar from cache if available
+                if (profiles[activeProfile] && profiles[activeProfile].avatarUrl) {
+                    avatarImg.style.display = 'block';
+                    init.style.display = 'none';
+                    avatarImg.src = profiles[activeProfile].avatarUrl;
+                } else {
+                    avatarImg.style.display = 'none';
+                    init.style.display = 'flex';
+                }
             } else {
                 init.textContent = '?';
                 username.textContent = 'Login';
                 username.classList.add('placeholder');
                 logoutBtn.style.display = 'none';
+                avatarImg.style.display = 'none';
+                init.style.display = 'flex';
             }
         }
+
+        // Load profiles on startup
+        parent.postMessage({ pluginMessage: { type: 'load-profiles' } }, '*');
+
+        // ── Login Modal ─────────────────────────────────────────
+        function renderProfiles() {
+            const list = document.getElementById('profilesList');
+            const entries = Object.entries(profiles);
+
+            if (!entries.length) {
+                list.innerHTML = '<div class="no-select-msg">No saved profiles</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            entries.forEach(([id, p]) => {
+                const item = document.createElement('div');
+                item.className = 'profile-item' + (id === activeProfile ? ' active' : '');
+
+                const avatarHtml = p.avatarUrl
+                    ? `<div class="profile-avatar"><img src="${p.avatarUrl}" alt="" /></div>`
+                    : `<div class="profile-avatar"><span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:16px;font-weight:700;">${(p.name || 'U').charAt(0).toUpperCase()}</span></div>`;
+
+                item.innerHTML = `
+                    ${avatarHtml}
+                    <div class="profile-info">
+                        <div class="profile-name">${p.name || 'Unnamed'}</div>
+                        <div class="profile-userid">ID: ${p.userId}</div>
+                    </div>
+                    <button class="profile-delete" data-id="${id}" title="Delete profile">✕</button>
+                `;
+
+                item.onclick = (e) => {
+                    if (e.target.classList.contains('profile-delete')) return;
+                    switchToProfile(id);
+                };
+
+                item.querySelector('.profile-delete').onclick = (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Delete profile "${p.name}"?`)) return;
+                    parent.postMessage({ pluginMessage: { type: 'delete-profile', profileId: id } }, '*');
+                };
+
+                list.appendChild(item);
+            });
+        }
+
+        function switchToProfile(id) {
+            const p = profiles[id];
+            if (!p) return;
+            activeProfile = id;
+            userId = p.userId;
+            apiKey = p.apiKey;
+            robloxUsername = p.name;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername, activeProfile } }, '*');
+            document.getElementById('loginOverlay').classList.remove('show');
+            updateProfileUI();
+            log(`Switched to "${robloxUsername}" (ID: ${userId})`, 's');
+            setStatus(`Logged in as ${robloxUsername}`);
+        }
+
+        // Tab switching
+        document.querySelectorAll('.login-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.login-tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+
+                if (tab.dataset.tab === 'profiles') {
+                    parent.postMessage({ pluginMessage: { type: 'load-profiles' } }, '*');
+                }
+            };
+        });
 
         document.getElementById('profileArea').onclick = () => {
             document.getElementById('loginUserId').value = userId;
             document.getElementById('loginApiKey').value = apiKey;
-            document.getElementById('loginUsername').value = robloxUsername;
+            document.getElementById('profileName').value = robloxUsername;
+            document.getElementById('loginStatus').style.display = 'none';
+
+            // Reset to connect tab
+            document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.login-tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tabConnect').classList.add('active');
+            document.querySelector('.login-tab[data-tab="connect"]').classList.add('active');
+
             document.getElementById('loginOverlay').classList.add('show');
         };
 
         document.getElementById('loginCancelBtn').onclick = () => document.getElementById('loginOverlay').classList.remove('show');
 
+        // OAuth Login
+        const BACKEND_URL = 'https://figroexporter-tawny.vercel.app';
+        const CLIENT_ID = '6051993114266710234';
+
+        document.getElementById('oauthLoginBtn').onclick = () => {
+            const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            const redirectUri = encodeURIComponent(BACKEND_URL + '/oauth/callback');
+            const authUrl = `https://apis.roblox.com/oauth/v1/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20profile%20asset:write&state=${sessionId}`;
+            parent.postMessage({ pluginMessage: { type: 'open-url', url: authUrl } }, '*');
+            
+            log('OAuth window opened. Waiting for authentication...', 'i');
+            
+            // Start polling for auth completion
+            const status = document.getElementById('loginStatus');
+            status.style.display = 'block';
+            status.className = 'login-status testing';
+            status.textContent = 'Waiting for Roblox login...';
+            
+            let pollCount = 0;
+            const maxAttempts = 60; // 2 minutes
+            const pollInterval = setInterval(async () => {
+                pollCount++;
+                
+                try {
+                    const res = await fetch(BACKEND_URL + '/api/check-auth?sessionId=' + sessionId);
+                    const data = await res.json();
+                    
+                    if (res.ok && data.status === 'success' && data.access_token) {
+                        clearInterval(pollInterval);
+                        
+                        // Save the OAuth profile
+                        const profileId = data.userId + '_oauth_' + Date.now();
+                        const profile = { userId: String(data.userId), apiKey: data.access_token, name: data.username || 'OAuth User' };
+                        profiles[profileId] = profile;
+                        activeProfile = profileId;
+                        userId = String(data.userId);
+                        apiKey = data.access_token;
+                        robloxUsername = data.username;
+
+                        parent.postMessage({ pluginMessage: { type: 'save-settings', profiles } }, '*');
+                        parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername, activeProfile } }, '*');
+
+                        document.getElementById('loginOverlay').classList.remove('show');
+                        updateProfileUI();
+                        log(`Logged in as ${robloxUsername} (ID: ${userId}) via OAuth`, 's');
+                        setStatus(`Logged in as ${robloxUsername}`);
+                    } else if (pollCount >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        status.className = 'login-status error';
+                        status.textContent = 'Authentication timed out. Please try again.';
+                    }
+                } catch (err) {
+                    if (pollCount >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        status.className = 'login-status error';
+                        status.textContent = 'Authentication timed out. Please try again.';
+                    }
+                }
+            }, 2000);
+        };
+
+        document.getElementById('exchangeCodeBtn').onclick = async () => {
+            const code = document.getElementById('oauthCodeInput').value.trim();
+            const status = document.getElementById('loginStatus');
+            if (!code) { alert('Enter the authorization code'); return; }
+
+            status.style.display = 'block';
+            status.className = 'login-status testing';
+            status.textContent = 'Exchanging code for token...';
+
+            try {
+                const res = await fetch(BACKEND_URL + '/api/exchange', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, redirectUri: BACKEND_URL + '/oauth/callback' })
+                });
+                const data = await res.json();
+
+                if (data.access_token) {
+                    // Get user info
+                    const userRes = await fetch('https://users.roblox.com/v1/users/me', {
+                        headers: { 'Authorization': `Bearer ${data.access_token}` }
+                    });
+                    const userData = await userRes.json();
+
+                    if (userData.id) {
+                        const profileId = userData.id + '_oauth_' + Date.now();
+                        const profile = { userId: String(userData.id), apiKey: data.access_token, name: userData.name || 'OAuth User' };
+                        profiles[profileId] = profile;
+                        activeProfile = profileId;
+                        userId = String(userData.id);
+                        apiKey = data.access_token;
+                        robloxUsername = userData.name;
+
+                        parent.postMessage({ pluginMessage: { type: 'save-settings', profiles } }, '*');
+                        parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername, activeProfile } }, '*');
+
+                        document.getElementById('loginOverlay').classList.remove('show');
+                        updateProfileUI();
+                        log(`Logged in as ${robloxUsername} (ID: ${userId}) via OAuth`, 's');
+                        setStatus(`Logged in as ${robloxUsername}`);
+                    }
+                } else {
+                    status.className = 'login-status error';
+                    status.textContent = 'Error: ' + (data.error_description || data.error);
+                }
+            } catch (err) {
+                status.className = 'login-status error';
+                status.textContent = 'Request failed: ' + err.message;
+            }
+        };
+
+        // Test connection
+        document.getElementById('testConnBtn').onclick = async () => {
+            const uid = document.getElementById('loginUserId').value.trim();
+            const key = document.getElementById('loginApiKey').value.trim();
+
+            if (!uid) { alert('Enter your User ID'); return; }
+            if (!key) { alert('Enter your API Key'); return; }
+
+            const status = document.getElementById('loginStatus');
+            status.style.display = 'block';
+            status.className = 'login-status testing';
+            status.textContent = 'Testing connection...';
+
+            try {
+                const res = await fetch(BACKEND_URL + '/api/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiKey: key, userId: uid })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    status.className = 'login-status success';
+                    status.textContent = `Connected! User: ${data.displayName || uid}`;
+                } else {
+                    status.className = 'login-status error';
+                    status.textContent = data.error || 'Connection failed';
+                }
+            } catch (err) {
+                status.className = 'login-status error';
+                status.textContent = 'Connection failed: ' + err.message;
+            }
+        };
+
+        // Save & Connect
         document.getElementById('loginBtn').onclick = () => {
             const uid = document.getElementById('loginUserId').value.trim();
             const key = document.getElementById('loginApiKey').value.trim();
-            const name = document.getElementById('loginUsername').value.trim();
+            const name = document.getElementById('profileName').value.trim() || 'Profile ' + uid;
+
             if (!uid) { alert('Enter your User ID'); return; }
             if (!key) { alert('Enter your API Key'); return; }
-            userId = uid; apiKey = key; robloxUsername = name || 'User_' + uid;
-            parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername } }, '*');
+
+            const profileId = uid + '_' + Date.now();
+            const newProfile = { userId: uid, apiKey: key, name };
+
+            // Save to profiles
+            profiles[profileId] = newProfile;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', profiles } }, '*');
+
+            // Apply as current
+            activeProfile = profileId;
+            userId = uid; apiKey = key; robloxUsername = name;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', userId, apiKey, robloxUsername, activeProfile } }, '*');
+
             document.getElementById('loginOverlay').classList.remove('show');
             updateProfileUI();
             log(`Logged in as ${robloxUsername} (ID: ${userId})`, 's');
@@ -942,7 +1419,7 @@
         document.getElementById('logoutBtn').onclick = () => {
             if (!confirm('Log out?')) return;
             parent.postMessage({ pluginMessage: { type: 'logout' } }, '*');
-            userId = ''; apiKey = ''; robloxUsername = '';
+            userId = ''; apiKey = ''; robloxUsername = ''; activeProfile = null;
             updateProfileUI();
             log('Logged out.', 'w');
         };
@@ -975,6 +1452,31 @@
             document.getElementById('userIdInput').value = '';
             parent.postMessage({ pluginMessage: { type: 'reset-settings' } }, '*');
             log('Settings reset.', 'w');
+        };
+
+        // ── Position Mode Selector ───────────────────────────────
+        document.querySelectorAll('#positionModeSelector .mode-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#positionModeSelector .mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                positionMode = btn.dataset.mode;
+                parent.postMessage({ pluginMessage: { type: 'save-settings', positionMode: positionMode } }, '*');
+                log(`Position mode: ${positionMode}`, 'i');
+            };
+        });
+
+        // ── Aspect Ratio Toggle ──────────────────────────────────
+        document.getElementById('aspectRatioOff').onclick = () => {
+            document.getElementById('aspectRatioOff').classList.add('active');
+            document.getElementById('aspectRatioOn').classList.remove('active');
+            applyAspectRatio = false;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', applyAspectRatio: false } }, '*');
+        };
+        document.getElementById('aspectRatioOn').onclick = () => {
+            document.getElementById('aspectRatioOn').classList.add('active');
+            document.getElementById('aspectRatioOff').classList.remove('active');
+            applyAspectRatio = true;
+            parent.postMessage({ pluginMessage: { type: 'save-settings', applyAspectRatio: true } }, '*');
         };
 
         // ── Sections Sidebar ───────────────────────────────────
@@ -1181,16 +1683,49 @@
         // ── Export Buttons ──────────────────────────────────────
         document.getElementById('zipBtn').onclick = () => {
             if (!currentSchema) return;
-            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: true } }, '*');
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: true, positionMode, applyAspectRatio } }, '*');
             log('Generating ZIP...', 'i');
         };
 
         document.getElementById('uploadBtn').onclick = () => {
             if (!apiKey || !userId) { alert('Login first (top-right profile icon).'); return; }
             if (!currentSchema) return;
-            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey, userId } }, '*');
+            parent.postMessage({ pluginMessage: { type: 'export', isZipMode: false, apiKey, userId, positionMode, applyAspectRatio } }, '*');
             log('Starting upload...', 'i');
         };
+
+        document.getElementById('copyJsonBtn').onclick = () => {
+            if (!currentSchema) return;
+            const json = JSON.stringify(currentSchema, null, 2);
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(json).then(() => {
+                    log('JSON copied to clipboard! Paste it in Roblox plugin.', 's');
+                    setStatus('JSON copied!', 'var(--green)');
+                }).catch(() => {
+                    fallbackCopy(json);
+                });
+            } else {
+                fallbackCopy(json);
+            }
+        };
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                log('JSON copied to clipboard! Paste it in Roblox plugin.', 's');
+                setStatus('JSON copied!', 'var(--green)');
+            } catch (e) {
+                log('Failed to copy JSON', 'e');
+            }
+            document.body.removeChild(textarea);
+        }
 
         document.getElementById('exportBtn').onclick = () => {
             if (!apiKey || !userId) { alert('Login first.'); return; }
@@ -1210,6 +1745,34 @@
                     userId = msg.userId || '';
                     robloxUsername = msg.robloxUsername || '';
                     updateProfileUI();
+                    break;
+
+                case 'profiles-loaded':
+                    profiles = msg.profiles || {};
+                    activeProfile = msg.activeProfile;
+                    renderProfiles();
+                    break;
+
+                case 'connection-result':
+                    const status = document.getElementById('loginStatus');
+                    if (msg.success) {
+                        status.className = 'login-status success';
+                        status.textContent = `✓ Connected! Welcome, ${msg.displayName || msg.userId}!`;
+
+                        // Update avatar in profiles and topbar
+                        const uid = msg.userId;
+                        for (const id in profiles) {
+                            if (profiles[id].userId === uid) {
+                                profiles[id].avatarUrl = msg.avatarUrl;
+                                profiles[id].displayName = msg.displayName;
+                            }
+                        }
+                        parent.postMessage({ pluginMessage: { type: 'save-settings', profiles } }, '*');
+                        updateProfileUI();
+                    } else {
+                        status.className = 'login-status error';
+                        status.textContent = `✕ ${msg.error || 'Connection failed'}`;
+                    }
                     break;
 
                 case 'logged-out':
@@ -1305,7 +1868,26 @@
                         hideHighlight();
                     }
 
-                    if (msg.nodeName) {
+                    // Get the actual node data from hierarchy instead of creating a fake node
+                    if (msg.nodeName && msg.hierarchy) {
+                        const findNode = (node, targetId) => {
+                            if (node.id === targetId) return node;
+                            if (node.children) {
+                                for (const child of node.children) {
+                                    const found = findNode(child, targetId);
+                                    if (found) return found;
+                                }
+                            }
+                            return null;
+                        };
+                        const hierarchyNode = findNode(msg.hierarchy, msg.nodeId);
+                        if (hierarchyNode) {
+                            showLayerInfo(hierarchyNode);
+                        } else {
+                            const fakeNode = { name: msg.nodeName, type: 'Node', width: msg.nodeWidth || 0, height: msg.nodeHeight || 0, tagType: 'Frame', tagColor: '#888', color: '#888' };
+                            showLayerInfo(fakeNode);
+                        }
+                    } else if (msg.nodeName) {
                         const fakeNode = { name: msg.nodeName, type: 'Node', width: msg.nodeWidth || 0, height: msg.nodeHeight || 0, tagType: 'Frame', tagColor: '#888', color: '#888' };
                         showLayerInfo(fakeNode);
                     }
@@ -1333,6 +1915,24 @@
                     currentHierarchy = msg.hierarchy;
                     highlightedNodeId = msg.selectedNodeId;
                     renderTree(currentHierarchy);
+                    
+                    // Also update the layer info panel with the correct type
+                    if (msg.selectedNodeId && currentHierarchy) {
+                        const findNode = (node, targetId) => {
+                            if (node.id === targetId) return node;
+                            if (node.children) {
+                                for (const child of node.children) {
+                                    const found = findNode(child, targetId);
+                                    if (found) return found;
+                                }
+                            }
+                            return null;
+                        };
+                        const hierarchyNode = findNode(currentHierarchy, msg.selectedNodeId);
+                        if (hierarchyNode) {
+                            showLayerInfo(hierarchyNode);
+                        }
+                    }
                     break;
 
                 case 'export-complete':
@@ -1366,8 +1966,11 @@
                     break;
 
                 case 'uploads-complete':
+                    currentSchema = msg.schema;
                     log(`Done! ${msg.successCount}/${msg.totalCount} uploaded (${msg.skippedCount} cached).`, 's');
                     setStatus(`Done — ${msg.successCount} uploaded`, 'var(--green)');
+                    document.getElementById('copyJsonBtn').disabled = false;
+                    document.getElementById('copyJsonBtn').title = 'Click to copy JSON for Roblox importer';
                     break;
             }
         };
